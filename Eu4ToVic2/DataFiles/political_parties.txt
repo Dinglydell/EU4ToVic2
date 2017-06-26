@@ -1,0 +1,60 @@
+# effects of party ideologies
+# foreach ideology, it takes the sum of everything modifying each policy and creates a party with policies based on the score as follows:
+# scale							   -10				 	0					10
+#economic_policy: planned_economy	| state_capitalism	|  interventionism	|  laissez_faire
+#trade_policy:								free_trade 	|	protectionism
+#religious_policy:		pro_atheism	| 	secularized		|	pluralism		|  moralism
+#war_policy:			pacifism	|	anti_military	|	pro_military	|  jingoism
+#										-5				0			5
+#citizenship_policy: full_citizenship	 |	  limited_citizenship	|	residency
+
+
+anarcho_liberal = {
+	economic_policy	= 15
+	trade_policy = -20
+	religious_policy = -15
+	war_policy = 5
+	citizenship_policy = -10
+}
+liberal = {
+	economic_policy	= 5
+	trade_policy = -10
+	religious_policy = -5
+	war_policy = -5
+	citizenship_policy = -5
+}
+conservative = {
+	economic_policy = 0
+	trade_policy = 0
+	religious_policy = 0
+	war_policy = 5
+	citizenship_policy = 0
+}
+reactionary = {
+	economic_policy	= -10
+	trade_policy = 10
+	religious_policy = 12
+	war_policy = 10
+	citizenship_policy = 10
+}
+socialist = {
+	economic_policy	= -15
+	trade_policy = -10
+	religious_policy = -5
+	war_policy = -5
+	citizenship_policy = -5
+}
+communist = {
+	economic_policy	= -20
+	trade_policy = 10
+	religious_policy = -20
+	war_policy = 8
+	citizenship_policy = -15
+}
+fascist = {
+	economic_policy	= -10
+	trade_policy = 20
+	religious_policy = 20
+	war_policy = 20
+	citizenship_policy = 15
+}

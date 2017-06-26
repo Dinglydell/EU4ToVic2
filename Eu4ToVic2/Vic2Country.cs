@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Eu4ToVic2
 {
@@ -28,10 +29,12 @@ namespace Eu4ToVic2
 
 		public float Prestige { get; set; }
 
-		public PReforms PoliticalReforms { get; set; }
-		public SReforms SocialReforms { get; set; }
+		public Reforms Reforms { get; set; }
+		//public SReforms SocialReforms { get; set; }
 
 		public UHouse UpperHouse { get; set; }
+
+		public List<PoliticalParty> PoliticalParties { get; set; }
 
 		public Vic2Country(Vic2World vic2World, Eu4Country eu4Country)
 		{
@@ -54,131 +57,388 @@ namespace Eu4ToVic2
 			IsCivilised = eu4Country.Institutions.TrueForAll(b => b);
 			// -100 - 100 scaled to 0 - 100
 			Prestige = (eu4Country.Prestige + 100) / 2;
-			CalcNationalValues();
-			CalcReforms();
-			CalcUpperHouse();
+
+			CalcEffects(vic2World);
+
+			if (CountryTag == "ENG")
+			{
+				Console.WriteLine("GBR!");
+			}
 		}
 
-		private void CalcUpperHouse()
+		private void CalcEffects(Vic2World vic2World)
 		{
-			//throw new NotImplementedException();
-			UpperHouse = new UHouse();
-		}
-
-		private void CalcReforms()
-		{
-			//throw new NotImplementedException();
-			PoliticalReforms = new PReforms();
-			SocialReforms = new SReforms();
-		}
-
-		private void CalcNationalValues()
-		{
-			//throw new NotImplementedException();
 			NationalValues = new NV();
+
+			Reforms = new Reforms();
+			var reforms = new Dictionary<Type, float>();
+
+			UpperHouse = new UHouse();
+
+			PoliticalParties = new List<PoliticalParty>();
+			var baseModifier = new IdeologyModifier();
+			IterateIdeaEffects(vic2World, (Dictionary<string, float> effects, byte ideaLevel) =>
+			{
+				CalcNationalValues(effects, ideaLevel);
+				CalcReforms(effects, ideaLevel, reforms);
+				CalcUpperHouse(effects, ideaLevel);
+				CalcPoliticalParties(effects, ideaLevel, baseModifier);
+			});
+			FinaliseReforms(reforms);
+			FinalisePoliticalParties(vic2World, baseModifier);
+			
+
+		}
+
+		private void FinaliseReforms(Dictionary<Type, float> reforms)
+		{
+			foreach (var reform in reforms)
+			{
+				//this is stupid what am I doing
+
+				var prop = typeof(Reforms).GetProperty(reform.Key.Name);
+				// divide score by 5 and make sure it's in the range of the enum
+				var value = Math.Min(Enum.GetValues(reform.Key).Length - 1, Math.Max(0, (int)(reform.Value / 5)));
+				// assign score to enum
+				prop.SetValue(Reforms, Enum.Parse(reform.Key, (value).ToString()));
+			}
+		}
+
+		private void FinalisePoliticalParties(Vic2World vic2World, IdeologyModifier baseModifier)
+		{
+			foreach (var ideology in vic2World.IdeologyModifiers)
+			{
+				var polParty = new PoliticalParty(ideology.Key);
+				var totalModifier = baseModifier + ideology.Value;
+				foreach (var pol in totalModifier.Policies)
+				{
+					polParty.SetIssue(pol.Key, pol.Value);
+				}
+				PoliticalParties.Add(polParty);
+			}
+		}
+
+		private void CalcPoliticalParties(Dictionary<string, float> effects, byte ideaLevel, IdeologyModifier baseModifier)
+		{
+			//PoliticalParties = new List<PoliticalParty>();
+
+			//IterateIdeaEffects(vic2World, (Dictionary<string, float> effects, byte ideaLevel) =>
+			//{
+			foreach (var policy in Policies.policyTypes)
+			{
+				if (effects.ContainsKey(policy.Name))
+				{
+					baseModifier.AddModifier(policy, effects[policy.Name] * ideaLevel);
+				}
+			}
+			//});
+
+
+		}
+
+		private void CalcUpperHouse(Dictionary<string, float> effects, byte ideaLevel)
+		{
+			//throw new NotImplementedException();
+			//UpperHouse = new UHouse();
+			//IterateIdeaEffects(vic2World, (Dictionary<string, float> effects, byte ideaLevel) =>
+			//{
+				if (effects.ContainsKey("UH_liberal"))
+				{
+					UpperHouse.Liberal += ideaLevel * (int)effects["UH_liberal"];
+				}
+				if (effects.ContainsKey("UH_reactionary"))
+				{
+					UpperHouse.Reactionary += ideaLevel * (int)effects["UH_reactionary"];
+				}
+				if (effects.ContainsKey("UH_conservative"))
+				{
+					UpperHouse.Conservative += ideaLevel * (int)effects["UH_conservative"];
+				}
+			
+			//);
+		}
+
+		private void CalcReforms(Dictionary<string, float> effects, byte ideaLevel, Dictionary<Type, float> reforms)
+		{
+
+			//Reforms = new Reforms();
+			//
+			//
+			//IterateIdeaEffects(vic2World, (Dictionary<string, float> effects, byte ideaLevel) =>
+			//{
+
+				// go through each reform (property) and add to its score
+				foreach (var reform in typeof(Reforms).GetProperties(System.Reflection.BindingFlags.Public))
+				{
+					if (effects.ContainsKey(reform.Name))
+					{
+						if (!reforms.ContainsKey(reform.PropertyType))
+						{
+							reforms[reform.PropertyType] = 0;
+						}
+						reforms[reform.PropertyType] += effects[reform.Name] * ideaLevel;
+					}
+
+				}
+			//});
+			
+
+		}
+
+		private void CalcNationalValues(Dictionary<string, float> effects, byte ideaLevel)
+		{
+			//throw new NotImplementedException();
+			//NationalValues = new NV();
+			//
+			//IterateIdeaEffects(vic2World, (Dictionary<string, float> effects, byte ideaLevel) =>
+			//{
+				if (effects.ContainsKey("NV_order"))
+				{
+					NationalValues.Order += effects["NV_order"] * ideaLevel;
+				}
+				if (effects.ContainsKey("NV_liberty"))
+				{
+					NationalValues.Liberty += effects["NV_liberty"] * ideaLevel;
+				}
+				if (effects.ContainsKey("NV_equality"))
+				{
+					NationalValues.Equality += effects["NV_equality"] * ideaLevel;
+				}
+			//});
+		}
+		private void IterateIdeaEffects(Vic2World vic2World, Action<Dictionary<string, float>, byte> callback)
+		{
+			foreach (var idea in Eu4Country.Ideas)
+			{
+				if (vic2World.IdeaEffects.ContainsKey(idea.Key))
+				{
+					callback(vic2World.IdeaEffects[idea.Key].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)), idea.Value);
+				}
+			}
+		}
+	}
+
+
+	public enum Ideology
+	{
+		anarcho_liberal, liberal, conservative, reactionary, socialist, communist, fascist
+	}
+	public class PoliticalParty
+	{
+
+		public Ideology Ideology { get; set; }
+		public economic_policy economic_policy { get; set; }
+		public trade_policy trade_policy { get; set; }
+		public religious_policy religious_policy { get; set; }
+		public war_policy war_policy { get; set; }
+		public citizenship_policy citizenship_policy { get; set; }
+
+		/// <summary>
+		/// defines the upper limit of each position on each policy
+		/// </summary>
+		static Dictionary<Type, Dictionary<Enum, int>> policyPositions = new Dictionary<Type, Dictionary<Enum, int>>
+		{
+			[typeof(economic_policy)] = new Dictionary<Enum, int>
+			{
+				[economic_policy.planned_economy] = -10,
+				[economic_policy.state_capitalism] = 0,
+				[economic_policy.interventionism] = 10,
+				[economic_policy.laissez_faire] = int.MaxValue
+			},
+			[typeof(war_policy)] = new Dictionary<Enum, int>
+			{
+				[war_policy.pacifism] = -10,
+				[war_policy.anti_military] = 0,
+				[war_policy.pro_military] = 10,
+				[war_policy.jingoism] = int.MaxValue
+			},
+			[typeof(religious_policy)] = new Dictionary<Enum, int>
+			{
+				[religious_policy.pro_atheism] = -10,
+				[religious_policy.secularized] = 0,
+				[religious_policy.pluralism] = 10,
+				[religious_policy.moralism] = int.MaxValue
+			},
+			[typeof(trade_policy)] = new Dictionary<Enum, int>
+			{
+				[trade_policy.free_trade] = 0,
+				[trade_policy.protectionism] = int.MaxValue
+			},
+			[typeof(citizenship_policy)] = new Dictionary<Enum, int>
+			{
+				[citizenship_policy.full_citizenship] = -5,
+				[citizenship_policy.limited_citizenship] = 5,
+				[citizenship_policy.residency] = int.MaxValue
+			},
+		};
+
+		public PoliticalParty(Ideology ideology)
+		{
+			Ideology = ideology;
+		}
+
+		public void SetIssue(Type key, float value)
+		{
+			// property that stores this type of policy 
+			var prop = typeof(PoliticalParty).GetProperty(key.Name);
+
+			// must be in ascending order for foreach loop to function
+			var positions = policyPositions[key].OrderBy(e => e.Value);
+
+			// find the policy for this type that matches the value
+			Enum eVal = null;
+			foreach (var pos in positions)
+			{
+				if (value <= pos.Value)
+				{
+					eVal = pos.Key;
+					break;
+				}
+			}
+			// set that policy
+			prop.SetValue(this, eVal);
+
 		}
 	}
 
 	public class UHouse
 	{
-		public int Liberal { get; set; }
-		public int Conservative { get; set; }
-		public int Reactionary { get; set; }
-	}
 
-	public class PReforms
+		private int liberal;
+
+		public int Liberal
+		{
+			get { return liberal; }
+			set
+			{
+				conservative -= value;
+				liberal += value;
+			}
+		}
+		private int conservative;
+
+		public int Conservative
+		{
+			get { return conservative; }
+			set
+			{
+				liberal -= value / 2;
+				reactionary -= value / 2;
+				conservative += value;
+			}
+		}
+
+		private int reactionary;
+
+		public int Reactionary
+		{
+			get { return reactionary; }
+			set
+			{
+				conservative -= value;
+				reactionary += value;
+			}
+		}
+
+		public UHouse()
+		{
+			conservative = 100;
+			liberal = 0;
+			reactionary = 0;
+		}
+	}
+	public enum slavery
 	{
-		public enum SlaveReform
-		{
-			no_slavery, yes_slavery
-		}
-		public enum UpperHouseReform
-		{
-			party_appointed, appointed, state_equal_weight, population_equal_weight
-		}
-		public enum VotingReform
-		{
-			none_voting, landed_voting, wealth_weighted_voting, wealth_voting, universal_weighted_voting, universal_voting
-		}
-		public enum VotingSystemReform
-		{
-			first_past_the_post, jefferson_method, proportional_representation
-		}
-		public enum PublicMeetingsReform
-		{
-			no_meeting, yes_meeting
-		}
-		public enum PressRightsReform
-		{
-			state_press, censored_press, free_press
-		}
-		public enum TradeUnionsReform
-		{
-			no_trade_unions, state_controlled, non_socialist, all_trade_unions
-		}
-		public enum PoliticalPartiesReform
-		{
-			underground_parties, harassment, gerrymandering, non_secret_ballots, secret_ballots
-		}
-
-
-		public SlaveReform Slavery { get; set; }
-		public UpperHouseReform UpperHouse { get; set; }
-		public VotingReform Voting { get; set; }
-		public VotingSystemReform VotingSystem { get; set; }
-		public PublicMeetingsReform PublicMeetings { get; set; }
-		public PressRightsReform PressRights { get; set; }
-		public TradeUnionsReform TradeUnions { get; set; }
-		public PoliticalPartiesReform PoliticalParties { get; set; }
+		no_slavery, yes_slavery
 	}
-
-	public class SReforms
+	public enum upper_house_composition
 	{
-		public enum WageReform
-		{
-			no_minimum_wage, trinket_wage, low_minimum_wage, acceptable_minimum_wage, good_minimum_wage
-		}
-		public enum WorkHoursReform
-		{
-			no_work_hour_limit, fourteen_hours, twelve_hours, ten_hours, eight_hours
-		}
-		public enum SafetyRegulationReform
-		{
-			no_safety, trinket_safety, low_safety, acceptable_safety, good_safety
-		}
-		public enum UnemploymentSubsidiesReform
-		{
-			no_subsidies, trinket_subsidies, low_subsidies, acceptable_subsidies, good_subsidies
-		}
-		public enum PensionsReform
-		{
-			no_pensions, trinket_pensions, low_pensions, acceptable_pensions, good_pensions
-		}
-		public enum HealthCareReform
-		{
-			no_health_care, trinket_health_care, low_health_care, acceptable_health_care, good_health_care
-		}
-		public enum SchoolReform
-		{
-			no_schools, low_schools, acceptable_schools, good_schools
-		}
-
-		public WageReform Wage { get; set; }
-		public WorkHoursReform WorkHours { get; set; }
-		public SafetyRegulationReform SafetyRegulation { get; set; }
-		public UnemploymentSubsidiesReform UnemploymentSubsidies { get; set; }
-		public PensionsReform Pensions { get; set; }
-		public HealthCareReform HealthCare { get; set; }
-		public SchoolReform School { get; set; }
-
+		party_appointed, appointed, state_equal_weight, population_equal_weight
 	}
+	public enum vote_franschise
+	{
+		none_voting, landed_voting, wealth_weighted_voting, wealth_voting, universal_weighted_voting, universal_voting
+	}
+	public enum voting_system
+	{
+		first_past_the_post, jefferson_method, proportional_representation
+	}
+	public enum public_meetings
+	{
+		no_meeting, yes_meeting
+	}
+	public enum press_rights
+	{
+		state_press, censored_press, free_press
+	}
+	public enum trade_unions
+	{
+		no_trade_unions, state_controlled, non_socialist, all_trade_unions
+	}
+	public enum political_parties
+	{
+		underground_parties, harassment, gerrymandering, non_secret_ballots, secret_ballots
+	}
+	public enum wage_reform
+	{
+		no_minimum_wage, trinket_wage, low_minimum_wage, acceptable_minimum_wage, good_minimum_wage
+	}
+	public enum work_hours
+	{
+		no_work_hour_limit, fourteen_hours, twelve_hours, ten_hours, eight_hours
+	}
+	public enum safety_regulations
+	{
+		no_safety, trinket_safety, low_safety, acceptable_safety, good_safety
+	}
+	public enum unemployment_subsidies
+	{
+		no_subsidies, trinket_subsidies, low_subsidies, acceptable_subsidies, good_subsidies
+	}
+	public enum pensions
+	{
+		no_pensions, trinket_pensions, low_pensions, acceptable_pensions, good_pensions
+	}
+	public enum health_care
+	{
+		no_health_care, trinket_health_care, low_health_care, acceptable_health_care, good_health_care
+	}
+	public enum school_reforms
+	{
+		no_schools, low_schools, acceptable_schools, good_schools
+	}
+
+	public class Reforms
+	{
+		//public static Type[] Types = { typeof(slavery), typeof(vote_franschise), typeof(upper_house_composition), typeof(voting_system), typeof(public_meetings), typeof(press_rights), typeof(trade_unions), typeof(political_parties), typeof(wage_reform), typeof( };
+
+		public slavery slavery { get; set; }
+		public upper_house_composition upper_house_composition { get; set; }
+		public vote_franschise vote_franschise { get; set; }
+		public voting_system voting_system { get; set; }
+		public public_meetings public_meetings { get; set; }
+		public press_rights press_rights { get; set; }
+		public trade_unions trade_unions { get; set; }
+		public political_parties political_parties { get; set; }
+
+
+		//todo: fix
+		public wage_reform wage_reform { get; set; }
+		public work_hours work_hours { get; set; }
+		public safety_regulations safety_regulations { get; set; }
+		public unemployment_subsidies unemployment_subsidies { get; set; }
+		public pensions pensions { get; set; }
+		public health_care health_care { get; set; }
+		public school_reforms school_reforms { get; set; }
+	}
+
 
 
 	public class NV
 	{
-		public int Order { get; set; }
-		public int Liberty { get; set; }
-		public int Equality { get; set; }
+		public float Order { get; set; }
+		public float Liberty { get; set; }
+		public float Equality { get; set; }
 
 		public NV()
 		{
@@ -186,5 +446,6 @@ namespace Eu4ToVic2
 			Liberty = 0;
 			Equality = 0;
 		}
+
 	}
 }

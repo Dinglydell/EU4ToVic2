@@ -69,7 +69,8 @@ namespace Eu4ToVic2
 			var map = new Dictionary<string, string>();
 			mappings.GetAllMatchingSublists("link", (lnk) =>
 			{
-				if (lnk.KeyValuePairs.Count == 2)
+
+				if (lnk.KeyValuePairs.Keys.All(key => key.Contains("eu4") || key.Contains("v2")))
 				{
 					lnk.GetAllMatchingKVPs("eu4", (eu4) =>
 					{
