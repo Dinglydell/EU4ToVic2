@@ -12,7 +12,7 @@ namespace Eu4ToVic2
 		public ProvinceMapper ProvMapper { get; set; }
 		public Mapper V2Mapper { get; set; }
 		public List<Vic2Country> Vic2Countries { get; set; }
-		public Dictionary<string, PdxSublist> IdeaEffects { get; set; }
+		public PdxSublist Effects { get; set; }
 		public Dictionary<Ideology, IdeologyModifier> IdeologyModifiers { get; set; }
 		public Vic2World(Eu4Save eu4Save)
 		{
@@ -20,7 +20,7 @@ namespace Eu4ToVic2
 			Eu4Save = eu4Save;
 			V2Mapper = new Mapper();
 			ProvMapper = new ProvinceMapper("province_mappings.txt");
-			LoadIdeaEffects();
+			LoadEffects();
 			LoadPoliticalParties();
 			Console.WriteLine("Constructing Vic2 world...");
 			GenerateCountries();
@@ -50,11 +50,10 @@ namespace Eu4ToVic2
 			}
 		}
 
-		private void LoadIdeaEffects()
+		private void LoadEffects()
 		{
-			Console.WriteLine("Loading idea effects...");
-			var ideas = PdxSublist.ReadFile("ideas.txt");
-			IdeaEffects = ideas.Sublists;
+			Console.WriteLine("Loading effects.txt...");
+			Effects = PdxSublist.ReadFile("effects.txt");
 		}
 
 		private void GenerateCountries()

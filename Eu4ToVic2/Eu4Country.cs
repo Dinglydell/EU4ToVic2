@@ -86,6 +86,8 @@ namespace Eu4ToVic2
 
 		public string Government { get; private set; }
 
+		public List<string> Flags { get; set; }
+
 		public Eu4Country(PdxSublist country)
 		{
 			CountryTag = country.Key;
@@ -151,6 +153,8 @@ namespace Eu4ToVic2
 			{
 				Ideas.Add(idp.Key, byte.Parse(idp.Value));
 			}
+
+			Flags = country.Sublists["flags"].KeyValuePairs.Keys.ToList();
 
 			Government = country.KeyValuePairs["government"];
 			if (country.Key == "GBR")

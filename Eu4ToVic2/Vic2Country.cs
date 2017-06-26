@@ -77,17 +77,26 @@ namespace Eu4ToVic2
 
 			PoliticalParties = new List<PoliticalParty>();
 			var baseModifier = new IdeologyModifier();
-			IterateIdeaEffects(vic2World, (Dictionary<string, float> effects, byte ideaLevel) =>
+			IterateEffects(vic2World, (Dictionary<string, float> effects) =>
 			{
-				CalcNationalValues(effects, ideaLevel);
-				CalcReforms(effects, ideaLevel, reforms);
-				CalcUpperHouse(effects, ideaLevel);
-				CalcPoliticalParties(effects, ideaLevel, baseModifier);
+				CalcNationalValues(effects);
+				CalcReforms(effects, reforms);
+				CalcUpperHouse(effects);
+				CalcPoliticalParties(effects, baseModifier);
+				CalcLiteracy(effects);
 			});
 			FinaliseReforms(reforms);
 			FinalisePoliticalParties(vic2World, baseModifier);
-			
 
+
+		}
+
+		private void CalcLiteracy(Dictionary<string, float> effects)
+		{
+			if (effects.ContainsKey("literacy"))
+			{
+				Literacy += effects["literacy"];
+			}
 		}
 
 		private void FinaliseReforms(Dictionary<Type, float> reforms)
@@ -118,7 +127,7 @@ namespace Eu4ToVic2
 			}
 		}
 
-		private void CalcPoliticalParties(Dictionary<string, float> effects, byte ideaLevel, IdeologyModifier baseModifier)
+		private void CalcPoliticalParties(Dictionary<string, float> effects, IdeologyModifier baseModifier)
 		{
 			//PoliticalParties = new List<PoliticalParty>();
 
@@ -128,7 +137,7 @@ namespace Eu4ToVic2
 			{
 				if (effects.ContainsKey(policy.Name))
 				{
-					baseModifier.AddModifier(policy, effects[policy.Name] * ideaLevel);
+					baseModifier.AddModifier(policy, effects[policy.Name]);
 				}
 			}
 			//});
@@ -136,29 +145,29 @@ namespace Eu4ToVic2
 
 		}
 
-		private void CalcUpperHouse(Dictionary<string, float> effects, byte ideaLevel)
+		private void CalcUpperHouse(Dictionary<string, float> effects)
 		{
 			//throw new NotImplementedException();
 			//UpperHouse = new UHouse();
 			//IterateIdeaEffects(vic2World, (Dictionary<string, float> effects, byte ideaLevel) =>
 			//{
-				if (effects.ContainsKey("UH_liberal"))
-				{
-					UpperHouse.Liberal += ideaLevel * (int)effects["UH_liberal"];
-				}
-				if (effects.ContainsKey("UH_reactionary"))
-				{
-					UpperHouse.Reactionary += ideaLevel * (int)effects["UH_reactionary"];
-				}
-				if (effects.ContainsKey("UH_conservative"))
-				{
-					UpperHouse.Conservative += ideaLevel * (int)effects["UH_conservative"];
-				}
-			
+			if (effects.ContainsKey("UH_liberal"))
+			{
+				UpperHouse.Liberal += (int)effects["UH_liberal"];
+			}
+			if (effects.ContainsKey("UH_reactionary"))
+			{
+				UpperHouse.Reactionary += (int)effects["UH_reactionary"];
+			}
+			if (effects.ContainsKey("UH_conservative"))
+			{
+				UpperHouse.Conservative += (int)effects["UH_conservative"];
+			}
+
 			//);
 		}
 
-		private void CalcReforms(Dictionary<string, float> effects, byte ideaLevel, Dictionary<Type, float> reforms)
+		private void CalcReforms(Dictionary<string, float> effects, Dictionary<Type, float> reforms)
 		{
 
 			//Reforms = new Reforms();
@@ -167,53 +176,74 @@ namespace Eu4ToVic2
 			//IterateIdeaEffects(vic2World, (Dictionary<string, float> effects, byte ideaLevel) =>
 			//{
 
-				// go through each reform (property) and add to its score
-				foreach (var reform in typeof(Reforms).GetProperties(System.Reflection.BindingFlags.Public))
+			// go through each reform (property) and add to its score
+			foreach (var reform in typeof(Reforms).GetProperties(System.Reflection.BindingFlags.Public))
+			{
+				if (effects.ContainsKey(reform.Name))
 				{
-					if (effects.ContainsKey(reform.Name))
+					if (!reforms.ContainsKey(reform.PropertyType))
 					{
-						if (!reforms.ContainsKey(reform.PropertyType))
-						{
-							reforms[reform.PropertyType] = 0;
-						}
-						reforms[reform.PropertyType] += effects[reform.Name] * ideaLevel;
+						reforms[reform.PropertyType] = 0;
 					}
-
+					reforms[reform.PropertyType] += effects[reform.Name];
 				}
+
+			}
 			//});
-			
+
 
 		}
 
-		private void CalcNationalValues(Dictionary<string, float> effects, byte ideaLevel)
+		private void CalcNationalValues(Dictionary<string, float> effects)
 		{
 			//throw new NotImplementedException();
 			//NationalValues = new NV();
 			//
 			//IterateIdeaEffects(vic2World, (Dictionary<string, float> effects, byte ideaLevel) =>
 			//{
-				if (effects.ContainsKey("NV_order"))
-				{
-					NationalValues.Order += effects["NV_order"] * ideaLevel;
-				}
-				if (effects.ContainsKey("NV_liberty"))
-				{
-					NationalValues.Liberty += effects["NV_liberty"] * ideaLevel;
-				}
-				if (effects.ContainsKey("NV_equality"))
-				{
-					NationalValues.Equality += effects["NV_equality"] * ideaLevel;
-				}
+			if (effects.ContainsKey("NV_order"))
+			{
+				NationalValues.Order += effects["NV_order"];
+			}
+			if (effects.ContainsKey("NV_liberty"))
+			{
+				NationalValues.Liberty += effects["NV_liberty"];
+			}
+			if (effects.ContainsKey("NV_equality"))
+			{
+				NationalValues.Equality += effects["NV_equality"];
+			}
 			//});
 		}
-		private void IterateIdeaEffects(Vic2World vic2World, Action<Dictionary<string, float>, byte> callback)
+		private void IterateEffects(Vic2World vic2World, Action<Dictionary<string, float>> callback)
 		{
+			//idea groups
 			foreach (var idea in Eu4Country.Ideas)
 			{
-				if (vic2World.IdeaEffects.ContainsKey(idea.Key))
+				if (vic2World.Effects.Sublists["ideas"].Sublists.ContainsKey(idea.Key))
 				{
-					callback(vic2World.IdeaEffects[idea.Key].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)), idea.Value);
+					callback(vic2World.Effects.Sublists["ideas"].Sublists[idea.Key].KeyValuePairs.ToDictionary(effect => effect.Key, effect => idea.Value * float.Parse(effect.Value)));
 				}
+			}
+
+			// country flags
+			foreach (var flag in Eu4Country.Flags)
+			{
+				if (vic2World.Effects.Sublists["flags"].Sublists.ContainsKey(flag))
+				{
+					callback(vic2World.Effects.Sublists["flags"].Sublists[flag].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+				}
+			}
+			// religion
+			if (vic2World.Effects.Sublists["religion"].Sublists.ContainsKey(Eu4Country.Religion))
+			{
+				callback(vic2World.Effects.Sublists["religion"].Sublists[Eu4Country.Religion].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+			}
+
+			// government
+			if (vic2World.Effects.Sublists["government"].Sublists.ContainsKey(Eu4Country.Government))
+			{
+				callback(vic2World.Effects.Sublists["government"].Sublists[Eu4Country.Government].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
 			}
 		}
 	}

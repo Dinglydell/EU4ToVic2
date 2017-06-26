@@ -1,0 +1,219 @@
+# effects that this groups have on stuff
+#########################
+# Categories of stuff:	#
+#########################
+# ideas = {
+#	effects idea groups may have
+# 	applies for every idea unlocked in that group
+# }
+#
+#
+############
+# EFFECTS: #
+############
+# NV_<value> = <amount>
+# changes the weight to get a certin national value
+# 
+# UH_<ideology> = <amount>
+# changes the amount of an ideology in the upper house
+# 
+# <reform> = <value>
+# shifts reform progress - every 10 points means an additional step
+# political: slavery, vote_franschise, upper_house_composition, voting_system, public_meetings, press_rights, trade_unions, political_parties
+# social: wage_reform, work_hours, safety_regulations, unemployment_subsidies, pensions, health_care, school_reforms
+#
+# <policy> = <value>
+# Changes position on axis of each party policy
+# scale							   -10				 	0					10
+#economic_policy: planned_economy	| state_capitalism	|  interventionism	|  laissez_faire:
+#trade_policy:								free_trade 	|	protectionism
+#religious_policy:		pro_atheism	| 	secularized		|	pluralism		|  moralism
+#war_policy:			pacifism	|	anti_military	|	pro_military	|  jingoism
+#										-5				0			5
+#citizenship_policy: full_citizenship	 |	  limited_citizenship	|	residency
+#
+# literacy = <value>
+# changes average % literacy in the nation (base is 10)
+ideas = {
+	aristocracy_ideas = {
+		NV_order = 1
+		NV_liberty = -1
+		NV_equality = -1
+		UH_reactionary = 1
+		war_policy = 1
+		#vote_franschise = -1
+		#upper_house_composition = -1
+	}
+	
+	plutocracy_ideas = {
+		NV_order = -1
+		NV_liberty = 1
+		UH_liberal = 1
+		war_policy = -0.125
+		#vote_franschise = 0.5
+		#upper_house_composition = 0.1
+	}
+	
+	innovativeness_ideas = {
+		NV_order = -1
+		UH_liberal = 1
+		war_policy = -0.125
+		#vote_franschise = 0.5
+		#press_rights = 0.5
+		literacy = 1
+	}
+	
+	religious_ideas = {
+		NV_order = 1
+		NV_equality = -1
+		UH_reactionary = 1
+		religious_policy = 2
+		citizenship_policy = 1
+		war_policy = -0.125
+	}
+	
+	spy_ideas = {
+		war_policy = -0.125
+		NV_order = 1
+		NV_liberty = -1
+	}
+	
+	diplomatic_ideas = {
+		war_policy = -0.25
+	}
+	
+	offensive_ideas = {
+		war_policy = 1
+	}
+	
+	defensive_ideas = {
+		war_policy = 1
+	}
+	
+	
+	trade_ideas = {
+		trade_policy = -2
+		economic_policy = 0.5
+		war_policy = -0.25
+	}
+	
+	
+	economic_ideas = {
+		trade_policy = -1
+		economic_policy = 1
+		war_policy = -0.125
+	}
+	
+	
+	exploration_ideas = {
+		war_policy = 0.125
+	}
+	
+	
+	maritime_ideas = {
+		war_policy = 0.5
+	}
+	
+	
+	quality_ideas = {
+		war_policy = 1
+	}
+	
+	
+	quantity_ideas = {
+		NV_equality = 1
+		war_policy = 1
+	}
+	
+	
+	expansion_ideas = {
+		war_policy = 0.125
+		NV_order = 1
+	}
+	
+	
+	administrative_ideas = {
+		war_policy = -0.125
+	}
+	
+	humanist_ideas = {
+		NV_equality = 1
+		NV_order = -1
+		UH_liberal = 1
+		religious_policy = -2
+		citizenship_policy = -1
+		war_policy = -0.125
+	}
+	
+	influence_ideas = {
+		war_policy = -0.125
+	}
+	
+	naval_ideas = {
+		war_policy = 0.5
+	}
+
+}
+
+# country flags and modifiers
+country_flags = {
+	the_abolish_slavery_act = {
+		slavery = 100
+	}
+	the_advancement_of_true_religion_act = {
+		religious_policy = 0.5
+	}
+	the_blasphemy_act = {
+		religious_policy = 1
+	}
+	the_act_of_uniformity = {
+		religious_policy = 0.5
+	}
+	the_conventicle_act = {
+		religious_policy = 1
+	}
+	the_declaration_of_indulgence = {
+		religious_policy = -1
+	}
+	
+	separation_of_powers  = {
+		religious_policy = -2
+		political_parties = 10
+	}
+	
+	cult_of_reason = {
+		religious_policy = -5
+		citizenship_policy = -5
+		
+	}
+}
+
+religion = {
+	cathar = {
+		war_policy = -1
+	}
+	sunni = {
+		religious_policy = 1
+	}
+	catholic = {
+		religious_policy = 1
+	}
+}
+
+government = {
+	constitutional_monarchy = {
+		vote_franschise = 30
+		upper_house_composition = 10
+		political_parties = 20
+	}
+	english_monarchy = {
+		vote_franschise = 20
+		upper_house_composition = 10
+	}
+	elective_monarchy = {
+		vote_franschise = 20
+		upper_house_composition = 10
+		political_parties = 10
+	}
+	
+}
