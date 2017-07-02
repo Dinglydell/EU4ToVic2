@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.IO;
 
 namespace Eu4ToVic2
 {
@@ -8,6 +10,7 @@ namespace Eu4ToVic2
 
 		public Eu4Save Eu4Save { get; set; }
 
+		public static readonly string VIC2_DIR = @"C:\Program Files (x86)\Steam\steamapps\common\Victoria 2\";
 
 		public ProvinceMapper ProvMapper { get; set; }
 		public Mapper V2Mapper { get; set; }
@@ -22,8 +25,56 @@ namespace Eu4ToVic2
 			ProvMapper = new ProvinceMapper("province_mappings.txt");
 			LoadEffects();
 			LoadPoliticalParties();
+			LoadVicTech();
 			Console.WriteLine("Constructing Vic2 world...");
 			GenerateCountries();
+		}
+
+		// do not look in here, it's an ugly mess
+		private void LoadVicTech()
+		{
+			var techs = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"common\technology.txt"));
+			var techTypes = techs.Sublists["folders"];
+			var techOrder = new Dictionary<string, List<string>>();
+
+			foreach (var techType in techTypes.Sublists)
+			{
+				techOrder.Add(techType.Key, new List<string>());
+				var techTypeFile = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, $@"technologies\{techType.Key}"));
+				//list instead of dictionary to retain order
+				var subTypes = new List<KeyValuePair<string, Queue<string>>>();
+				foreach (var tech in techTypeFile.Sublists)
+				{
+					if (!subTypes.Exists(p => p.Key == tech.Value.KeyValuePairs["area"]))
+					{
+						subTypes.Add(new KeyValuePair<string, Queue<string>>(tech.Value.KeyValuePairs["area"], new Queue<string>()));
+					}
+					// a big mess
+					subTypes.Find(kv => kv.Key == tech.Value.KeyValuePairs["area"]).Value.Enqueue(tech.Key);
+				}
+				var subTypesList = subTypes.ConvertAll(st => st.Value);
+				while(subTypesList.Count > 0)
+				{
+					for (var i = 0; i < subTypesList.Count; i++)
+					{
+						subTypesList[i].Dequeue();
+						if(subTypesList[i].Count == 0)
+						{
+							subTypesList.RemoveAt(i--);
+						}
+
+					}
+					
+				}
+			}
+
+			var dir = Directory.GetFiles(Path.Combine(VIC2_DIR, @"\techonolgies\"));
+			foreach (var file in dir)
+			{
+				var name = Path.GetFileNameWithoutExtension(file);
+			}
+			var armyTech = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"technologies\army_tech.txt"));
+			var commerceTech = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"technologies\commerce_tech.txt"));
 		}
 
 		private void LoadPoliticalParties()

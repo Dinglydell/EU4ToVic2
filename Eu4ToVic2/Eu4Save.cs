@@ -27,6 +27,7 @@ namespace Eu4ToVic2
 
 			//LoadCountryTags();
 			LoadCountryData();
+			Console.WriteLine($"Average merc: {Countries.Where(c => c.Value.Exists).Sum(c => c.Value.Mercantilism) / Countries.Count}");
 			LoadProvinceData();
 			Console.WriteLine("EU4 data loaded.");
 		}

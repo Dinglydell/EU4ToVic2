@@ -34,33 +34,74 @@
 #
 # literacy = <value>
 # changes average % literacy in the nation (base is 10)
+#
+# militancy = <value>
+# changes average militancy (base is 0)
+#
+# plurality = <value>
+# changes plurality (base is 0)
+#
+# consciousness = <value>
+# changes consciousness (base is 0)
+#
+# <tech school> = <value>
+# increases/decreases the weight of getting this tech school. picks tech school with highest score
+# traditional_academic, army_tech_school, naval_tech_school, industrial_tech_school, culture_tech_school, commerce_tech_school, prussian_tech_school
+#
+# <tech category> = <value>
+# increases amount of tech in a category
+# army_tech, navy_tech, commerce_tech, culture_tech, industry_tech
+
 ideas = {
 	aristocracy_ideas = {
 		NV_order = 1
 		NV_liberty = -1
 		NV_equality = -1
 		UH_reactionary = 1
-		war_policy = 1
+		war_policy = 0.5
 		#vote_franschise = -1
 		#upper_house_composition = -1
+		army_tech_school = 1
+		#consciousness = 0.0625
+		
+		
 	}
 	
 	plutocracy_ideas = {
 		NV_order = -1
 		NV_liberty = 1
 		UH_liberal = 1
-		war_policy = -0.125
-		#vote_franschise = 0.5
+		#war_policy = -0.125
+		
+		literacy = 0.25
+		plurality = 0.5
+		consciousness = 0.125
+		vote_franschise = 1
 		#upper_house_composition = 0.1
+		
+		culture_tech_school = 1
+		commerce_tech_school = 1
 	}
 	
 	innovativeness_ideas = {
 		NV_order = -1
 		UH_liberal = 1
+		NV_equality = 0.5
+		religious_policy = -0.25
+		citizenship_policy = -0.25
 		war_policy = -0.125
 		#vote_franschise = 0.5
-		#press_rights = 0.5
+		
+		press_rights = 0.625
 		literacy = 1
+		school_reforms = 1
+		plurality = 0.5
+		
+		culture_tech_school = 1
+		industrial_tech_school = 1
+		
+		culture_tech = 0.125
+		industry_tech = 0.125
 	}
 	
 	religious_ideas = {
@@ -70,6 +111,8 @@ ideas = {
 		religious_policy = 2
 		citizenship_policy = 1
 		war_policy = -0.125
+		
+		literacy = 0.125
 	}
 	
 	spy_ideas = {
@@ -80,14 +123,29 @@ ideas = {
 	
 	diplomatic_ideas = {
 		war_policy = -0.25
+		literacy = 0.125
+		
+		culture_tech_school = 1
+		
+		
 	}
 	
 	offensive_ideas = {
 		war_policy = 1
+		UH_reactionary = 1
+		NV_liberty = -1
+		
+		army_tech_school = 0.5
+		
+		army_tech = 0.125
 	}
 	
 	defensive_ideas = {
 		war_policy = 1
+		
+		army_tech_school = 0.5
+		
+		army_tech = 0.125
 	}
 	
 	
@@ -95,6 +153,14 @@ ideas = {
 		trade_policy = -2
 		economic_policy = 0.5
 		war_policy = -0.25
+		citizenship_policy = -0.125
+		trade_unions = 1.25
+		
+		culture_tech_school = 1
+		commerce_tech_school = 1
+		naval_tech_school = 1
+		
+		commerce_tech = 0.125
 	}
 	
 	
@@ -102,55 +168,97 @@ ideas = {
 		trade_policy = -1
 		economic_policy = 1
 		war_policy = -0.125
+		
+		commerce_tech_school = 1
+		industrial_tech_school = 1
+		
+		commerce_tech = 0.125
 	}
 	
 	
 	exploration_ideas = {
-		war_policy = 0.125
+		#war_policy = 0.125
+		trade_policy = -0.25
+		
+		naval_tech_school = 1
 	}
 	
 	
 	maritime_ideas = {
 		war_policy = 0.5
+		
+		naval_tech_school = 1
+		
+		navy_tech = 0.125
 	}
 	
 	
 	quality_ideas = {
 		war_policy = 1
+		
+		army_tech_school = 0.5
+		naval_tech_school = 0.5
+		
+		army_tech = 0.0625
+		navy_tech = 0.0625
 	}
 	
 	
 	quantity_ideas = {
 		NV_equality = 1
+		UH_reactionary = 0.5
+		NV_liberty = -0.5
 		war_policy = 1
+		
+		army_tech_school = 0.5
 	}
 	
 	
 	expansion_ideas = {
-		war_policy = 0.125
+		#war_policy = 0.125
 		NV_order = 1
+		trade_policy = -0.25
+		
+		naval_tech_school = 0.5
 	}
 	
 	
 	administrative_ideas = {
 		war_policy = -0.125
+		literacy = 0.125
+		
+		industrial_tech_school = 0.5
 	}
 	
 	humanist_ideas = {
 		NV_equality = 1
+		NV_liberty = 1
 		NV_order = -1
 		UH_liberal = 1
 		religious_policy = -2
 		citizenship_policy = -1
 		war_policy = -0.125
+		
+		culture_tech_school = 1
+		
+		culture_tech = 0.125
 	}
 	
 	influence_ideas = {
 		war_policy = -0.125
+		
+		culture_tech_school = 1
+		commerce_tech_school = 1
 	}
 	
 	naval_ideas = {
 		war_policy = 0.5
+		UH_reactionary = 0.5
+		NV_liberty = -0.5
+		
+		naval_tech_school = 1
+		
+		navy_tech = 0.125
 	}
 
 }
@@ -159,6 +267,8 @@ ideas = {
 country_flags = {
 	the_abolish_slavery_act = {
 		slavery = 100
+		plurality = 1
+		consciousness = 0.1
 	}
 	the_advancement_of_true_religion_act = {
 		religious_policy = 0.5
@@ -179,12 +289,17 @@ country_flags = {
 	separation_of_powers  = {
 		religious_policy = -2
 		political_parties = 10
+		plurality = 1
 	}
 	
 	cult_of_reason = {
 		religious_policy = -5
 		citizenship_policy = -5
-		
+		consciousness = 2
+	}
+	
+	hire_privateers = {
+		trade_policy = 3
 	}
 }
 
@@ -201,19 +316,249 @@ religion = {
 }
 
 government = {
+	despotic_monarchy = {
+		vote_franschise = -10
+		upper_house_composition = -10
+		political_parties = -10
+	}
+	feudal_monarchy = {
+		vote_franschise = -10
+		upper_house_composition = 10
+		political_parties = -10
+	}
+	administrative_monarchy = {
+		upper_house_composition = 10
+	}
 	constitutional_monarchy = {
-		vote_franschise = 30
+		vote_franschise = 25
+		upper_house_composition = 10
+		political_parties = 25
+		press_rights = 15
+		public_meetings = 10
+	}
+	enlightened_despotism = {
 		upper_house_composition = 10
 		political_parties = 20
+		press_rights = 15
+		public_meetings = 10
+		
+		consciousness = 0.5
+		plurality = 5
+	}
+	revolutionary_empire  = {
+		upper_house_composition = 10
+		political_parties = 20
+		
+		consciousness = 1
+		plurality = 5
+	}
+	merchant_republic = {
+		vote_franschise = 15
+		upper_house_composition = 10
+	}
+	oligarchic_republic = {
+		vote_franschise = 15
+		political_parties = 10
+		upper_house_composition = 10
+		
+	}
+	noble_republic = {
+		vote_franschise = 10
+		political_parties = 10
+		upper_house_composition = 10
+	}
+	administrative_republic  = {
+		vote_franschise = 20
+		political_parties = 15
+		upper_house_composition = 10
+	}
+	republican_dictatorship  = {
+		political_parties = 10
+		upper_house_composition = 10
+	}
+	constitutional_republic  = {
+		vote_franschise = 30
+		political_parties = 25
+		upper_house_composition = 20
+		press_rights = 15
+		public_meetings = 10
+	}
+	bureaucratic_despotism = {
+		vote_franschise = 20
+		political_parties = 20
+		upper_house_composition = 15
+		press_rights = 10
+	}
+	revolutionary_republic  = {
+		vote_franschise = 50
+		political_parties = 40
+		upper_house_composition = 30
+		press_rights = 20
+		public_meetings = 10
 	}
 	english_monarchy = {
-		vote_franschise = 20
+		vote_franschise = 15
+		upper_house_composition = 10
+	}
+	prussian_monarchy = {
 		upper_house_composition = 10
 	}
 	elective_monarchy = {
-		vote_franschise = 20
+		vote_franschise = 10
 		upper_house_composition = 10
 		political_parties = 10
+	}
+	
+}
+
+policies = {
+	the_importation_act = {
+		trade_policy = 5
+	}
+	
+	the_mining_act = {
+		economic_policy = 2
+	}
+	
+	restrictions_for_colonies = {
+		trade_policy = 5
+	}
+	
+	public_welfare_act = {
+		health_care = 5
+	}
+	
+	the_dissolution_act  = {
+		upper_house_composition = 5
+		political_parties = 5
+		UH_liberal = 3
+	}
+	
+	pen_rely_on_sword_act  = {
+		war_policy = 5
+	}
+	
+	the_combination_act = {
+		trade_unions = -10
+	}
+	visionary_thinkers  = {
+		literacy = 5
+		UH_liberal = 3
+	}
+	the_liberation_act = {
+		NV_liberty = 3
+		UH_liberal = 3
+	}
+	multilingual_diplomats = {
+		citizenship_policy = -5
+	}
+	field_priests = {
+		religious_policy = 3
+	}
+	military_zeal_act = {
+		religious_policy = 3
+	}
+	anti_heresy_act = {
+		religious_policy = 6
+		NV_equality = -3
+	}
+	church_sponsored_guilds = {
+		religious_policy = 3
+	}
+	the_statute_of_monopolies = {
+		trade_policy = -5
+	}
+	public_legitimacy  = {
+		vote_franschise = 5
+		NV_equality = 3
+		UH_liberal = 3
+	}
+	
+	production_quota_act  = {
+		economic_policy = -5
+		
+		industrial_tech_school = 5
+	}
+	
+	cultural_recognition_act  = {
+		citizenship_policy = -5
+		NV_equality = 3
+	}
+	the_education_act  = {
+		school_reforms = 10
+		literacy = 5
+		UH_liberal = 3
+	}
+	
+	cultural_understanding = {
+		citizenship_policy = -5
+		
+		culture_tech_school = 5
+	}
+	
+	the_tolerance_act = {
+		religious_policy = -5
+		NV_liberty = 3
+		UH_liberal = 3
+	}
+	full_sovereignty_act  = {
+		NV_liberty = 3
+	}
+	
+}
+
+# arbitrary values that are scaled. every modifier in here is multiplied by the value before being applied
+# some values are manipulated first (eg. legitimacy -> (legitimacy - 50) * modifier
+values = {
+	mercantilism = {
+		
+		trade_policy = 0.1
+	}
+	
+	#each value below 50 counts as negative legitimacy
+	legitimacy = {
+		# this means the value is subtracted by 50 before multiplying, such that values below 50 count as a negative
+		average = 50
+		consciousness = -0.01	
+	}
+	
+	# each value below 50 counts as negative
+	republican_tradition = {
+		average = 50
+		UH_liberal = 1
+		UH_reactionary = -1
+		consciousness = 0.01
+		press_rights = 0.1
+		political_parties = 0.1
+	}
+	
+	stability = {
+		militancy = -0.1
+	}
+	
+	#absolutism = {
+	#	average = 20
+	#	UH_liberal = -0.1
+	#	UH_reactionary = 0.1
+	#	NV_order = 0.05
+	#	NV_liberty = 0.05
+	#	political_parties = -0.1
+	#	upper_house_composition = -0.1
+	#}
+	
+	# todo
+	adm_tech = {
+		industry_tech = 0.25
+		commerce_tech = 0.125
+	}
+	dip_tech = {
+		commerce_tech = 0.125
+		culture_tech = 0.25
+		navy_tech = 0.125
+	}
+	mil_tech = {
+		army_tech = 0.25
+		navy_tech = 0.125
 	}
 	
 }

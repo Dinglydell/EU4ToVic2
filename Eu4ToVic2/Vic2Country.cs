@@ -24,15 +24,19 @@ namespace Eu4ToVic2
 		public NV NationalValues { get; set; }
 
 		public float Literacy { get; set; }
+		public float Consciousness { get; set; }
+		public float Plurality { get; set; }
+		public float Militancy { get; set; }
 
 		public bool IsCivilised { get; set; }
 
 		public float Prestige { get; set; }
 
-		public Reforms Reforms { get; set; }
-		//public SReforms SocialReforms { get; set; }
+		public Reforms Reforms { get; set; }		
 
 		public UHouse UpperHouse { get; set; }
+
+		public PoliticalParty RulingParty { get; set; }
 
 		public List<PoliticalParty> PoliticalParties { get; set; }
 
@@ -84,6 +88,8 @@ namespace Eu4ToVic2
 				CalcUpperHouse(effects);
 				CalcPoliticalParties(effects, baseModifier);
 				CalcLiteracy(effects);
+				CalcConsciousness(effects);
+				CalcMilitancy(effects);
 			});
 			FinaliseReforms(reforms);
 			FinalisePoliticalParties(vic2World, baseModifier);
@@ -91,11 +97,32 @@ namespace Eu4ToVic2
 
 		}
 
+		private void CalcMilitancy(Dictionary<string, float> effects)
+		{
+			if (effects.ContainsKey("militancy"))
+			{
+				Militancy += effects["militancy"];
+			}
+
+		}
+
+		private void CalcConsciousness(Dictionary<string, float> effects)
+		{
+			if (effects.ContainsKey("consciousness"))
+			{
+				Consciousness += effects["consciousness"];
+			}
+			if (effects.ContainsKey("plurality"))
+			{
+				Plurality += effects["plurality"];
+			}
+		}
+
 		private void CalcLiteracy(Dictionary<string, float> effects)
 		{
 			if (effects.ContainsKey("literacy"))
 			{
-				Literacy += effects["literacy"];
+				Literacy += effects["literacy"] / 100;
 			}
 		}
 
@@ -107,7 +134,7 @@ namespace Eu4ToVic2
 
 				var prop = typeof(Reforms).GetProperty(reform.Key.Name);
 				// divide score by 5 and make sure it's in the range of the enum
-				var value = Math.Min(Enum.GetValues(reform.Key).Length - 1, Math.Max(0, (int)(reform.Value / 5)));
+				var value = Math.Min(Enum.GetValues(reform.Key).Length - 1, Math.Max(0, (int)(reform.Value / 10)));
 				// assign score to enum
 				prop.SetValue(Reforms, Enum.Parse(reform.Key, (value).ToString()));
 			}
@@ -124,6 +151,10 @@ namespace Eu4ToVic2
 					polParty.SetIssue(pol.Key, pol.Value);
 				}
 				PoliticalParties.Add(polParty);
+				if(ideology.Key == UpperHouse.GetMode())
+				{
+
+				}
 			}
 		}
 
@@ -177,7 +208,7 @@ namespace Eu4ToVic2
 			//{
 
 			// go through each reform (property) and add to its score
-			foreach (var reform in typeof(Reforms).GetProperties(System.Reflection.BindingFlags.Public))
+			foreach (var reform in typeof(Reforms).GetProperties())
 			{
 				if (effects.ContainsKey(reform.Name))
 				{
@@ -229,9 +260,9 @@ namespace Eu4ToVic2
 			// country flags
 			foreach (var flag in Eu4Country.Flags)
 			{
-				if (vic2World.Effects.Sublists["flags"].Sublists.ContainsKey(flag))
+				if (vic2World.Effects.Sublists["country_flags"].Sublists.ContainsKey(flag))
 				{
-					callback(vic2World.Effects.Sublists["flags"].Sublists[flag].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+					callback(vic2World.Effects.Sublists["country_flags"].Sublists[flag].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
 				}
 			}
 			// religion
@@ -244,6 +275,39 @@ namespace Eu4ToVic2
 			if (vic2World.Effects.Sublists["government"].Sublists.ContainsKey(Eu4Country.Government))
 			{
 				callback(vic2World.Effects.Sublists["government"].Sublists[Eu4Country.Government].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+			}
+
+			// policies
+			foreach (var policy in Eu4Country.Policies)
+			{
+				if (vic2World.Effects.Sublists["policies"].Sublists.ContainsKey(policy))
+				{
+					callback(vic2World.Effects.Sublists["policies"].Sublists[policy].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+				}
+			}
+
+			// values
+			//mercantilism
+			ValueEffect(vic2World, callback, "mercantilism", Eu4Country.Mercantilism);
+			ValueEffect(vic2World, callback, "legitimacy", Eu4Country.Legitimacy);// - 50);
+			ValueEffect(vic2World, callback, "republican_tradition", Eu4Country.RepublicanTradition);// - 50);
+			ValueEffect(vic2World, callback, "stability", Eu4Country.Stability);
+			ValueEffect(vic2World, callback, "absolutism", Eu4Country.Absolutism);
+
+		}
+
+		private void ValueEffect(Vic2World vic2World, Action<Dictionary<string, float>> callback, string key, float value)
+		{
+			if (vic2World.Effects.Sublists["values"].Sublists.ContainsKey(key))
+			{
+				var average = 0f;
+				if (vic2World.Effects.Sublists["values"].Sublists[key].KeyValuePairs.ContainsKey("average"))
+				{
+					average = float.Parse(vic2World.Effects.Sublists["values"].Sublists[key].KeyValuePairs["average"]);
+				}
+
+
+				callback(vic2World.Effects.Sublists["values"].Sublists[key].KeyValuePairs.ToDictionary(effect => effect.Key, effect => (value - average) * float.Parse(effect.Value)));
 			}
 		}
 	}
@@ -375,6 +439,24 @@ namespace Eu4ToVic2
 			conservative = 100;
 			liberal = 0;
 			reactionary = 0;
+		}
+
+		/// <summary>
+		/// Gets the modal ideology in the upper house. (most popular ideology)
+		/// </summary>
+		/// <returns></returns>
+		internal Ideology GetMode()
+		{
+			if(conservative > 33)
+			{
+				return Ideology.conservative;
+			} else if(liberal > 33)
+			{
+				return Ideology.liberal;
+			} else
+			{
+				return Ideology.reactionary;
+			}
 		}
 	}
 	public enum slavery

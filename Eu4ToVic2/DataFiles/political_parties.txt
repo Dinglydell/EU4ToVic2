@@ -41,7 +41,7 @@ socialist = {
 	economic_policy	= -15
 	trade_policy = -10
 	religious_policy = -5
-	war_policy = -5
+	war_policy = -10
 	citizenship_policy = -5
 }
 communist = {

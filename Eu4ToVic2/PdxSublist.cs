@@ -148,6 +148,7 @@ namespace Eu4ToVic2
 			{
 				throw new Exception("An unknown error occurred.");
 			}
+			file.Close();
 			return rootList;
 		}
 

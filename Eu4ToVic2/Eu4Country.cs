@@ -79,6 +79,7 @@ namespace Eu4ToVic2
 
 		public float Absolutism { get; set; }
 		public float Legitimacy { get; set; }
+		public float RepublicanTradition { get; set; }
 		public float Corruption { get; set; }
 		public float Mercantilism { get; private set; }
 
@@ -87,6 +88,8 @@ namespace Eu4ToVic2
 		public string Government { get; private set; }
 
 		public List<string> Flags { get; set; }
+
+		public List<string> Policies { get; set; }
 
 		public Eu4Country(PdxSublist country)
 		{
@@ -143,7 +146,8 @@ namespace Eu4ToVic2
 			});
 
 			Absolutism = LoadFloat(country,"absolutism");
-			Legitimacy = LoadFloat(country,"legitimacy");
+			Legitimacy = LoadFloat(country,"legitimacy", 50);
+			RepublicanTradition = LoadFloat(country, "republican_tradition", 50);
 			Corruption = LoadFloat(country,"corruption");
 			Mercantilism = LoadFloat(country,"mercantilism");
 
@@ -155,6 +159,11 @@ namespace Eu4ToVic2
 			}
 
 			Flags = country.Sublists["flags"].KeyValuePairs.Keys.ToList();
+			Policies = new List<string>();
+			country.GetAllMatchingSublists("active_policy", (pol) =>
+			{
+				Policies.Add(pol.KeyValuePairs["policy"]);
+			});
 
 			Government = country.KeyValuePairs["government"];
 			if (country.Key == "GBR")
@@ -163,11 +172,11 @@ namespace Eu4ToVic2
 			}
 		}
 
-		private float LoadFloat(PdxSublist country, string key)
+		private float LoadFloat(PdxSublist country, string key, float deflt = 0)
 		{
 			if (!country.KeyValuePairs.ContainsKey(key))
 			{
-				return 0;
+				return deflt;
 			}
 			return float.Parse(country.KeyValuePairs[key]);
 		}
