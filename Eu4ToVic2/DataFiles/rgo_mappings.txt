@@ -1,0 +1,9 @@
+# incomplete. uses vanilla rgo for now
+
+link = { v2 = grain eu4 = grain  }
+link = { v2 = fruit eu4 = wine }
+link = { v2 = wool eu4 = wool }
+link = { v2 = cotton v2 = dye eu4 = cloth }
+link = { v2 = cattle eu4 = fur }
+link = { v2 = fish eu4 = fish }
+

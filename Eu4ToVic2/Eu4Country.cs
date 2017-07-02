@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Eu4ToVic2
 {
-	class Colour
+	public class Colour
 	{
 		public byte Red { get; set; }
 		public byte Green { get; set; }
@@ -26,8 +26,9 @@ namespace Eu4ToVic2
 
 	}
 
-	class Estate
+	public class Estate
 	{
+		public static readonly string[] EstateTypes = new string[] { null, "estate_church", "estate_nobles", "estate_burghers", "estate_cossacks", "estate_nomadic_tribes", "estate_dhimmi"};
 		public string Type { get; set; }
 		public float Loyalty { get; set; }
 		public float Influence { get; set; }
@@ -42,7 +43,7 @@ namespace Eu4ToVic2
 		}
 	}
 
-	class Eu4Country
+	public class Eu4Country
 	{
 
 		public bool Exists { get; set; }

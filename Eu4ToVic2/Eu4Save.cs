@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Eu4ToVic2
 {
-	class Eu4Save
+	public class Eu4Save
 	{
 		public static readonly string GAME_PATH = @"C:\Program Files (x86)\Steam\steamapps\common\Europa Universalis IV\";
 

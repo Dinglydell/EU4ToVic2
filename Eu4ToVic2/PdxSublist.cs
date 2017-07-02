@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Eu4ToVic2
 {
-	class PdxSublist
+	public class PdxSublist
 	{
 
 		public PdxSublist(PdxSublist parent, string key = null)
@@ -108,6 +108,8 @@ namespace Eu4ToVic2
 		public List<PdxSublist> KeylessSublists { get; set; }
 
 		public PdxSublist Parent { get; private set; }
+		private static ReadState State { get; set; }
+		private static string ReadKey { get; set; }
 
 		public DateTime GetDate(string key)
 		{
@@ -125,6 +127,7 @@ namespace Eu4ToVic2
 
 		public static PdxSublist ReadFile(string filePath, string firstLine = null)
 		{
+			State = ReadState.normal;
 			//TODO: write a much more sophisticated file reader
 			var file = new StreamReader(filePath);
 			string line;
@@ -166,6 +169,10 @@ namespace Eu4ToVic2
 				return currentList;
 			}
 			string key = null;
+			if (State == ReadState.value)
+			{
+				key = ReadKey;
+			}
 			var value = RemoveWhitespace(line.Substring(line.IndexOf('=') + 1));
 
 			if (line.Contains('='))
@@ -176,6 +183,11 @@ namespace Eu4ToVic2
 			{
 				return currentList.Parent;
 
+			}
+			if (string.IsNullOrWhiteSpace(value))
+			{
+				State = ReadState.value;
+				ReadKey = key;
 			}
 			var parent = false;
 			if (value.Contains('}'))
@@ -307,6 +319,11 @@ namespace Eu4ToVic2
 			}
 			//return Regex.Replace(str, @"\s+", String.Empty);
 			return newStr.ToString();
+		}
+
+		enum ReadState
+		{
+			normal, value
 		}
 	}
 }

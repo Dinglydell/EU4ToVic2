@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 
 namespace Eu4ToVic2
 {
@@ -15,8 +16,18 @@ namespace Eu4ToVic2
 		public ProvinceMapper ProvMapper { get; set; }
 		public Mapper V2Mapper { get; set; }
 		public List<Vic2Country> Vic2Countries { get; set; }
-		public PdxSublist Effects { get; set; }
+		public PdxSublist CountryEffects { get; set; }
+		public PdxSublist ProvinceEffects { get; set; }
 		public Dictionary<Ideology, IdeologyModifier> IdeologyModifiers { get; set; }
+
+		
+
+		/// <summary>
+		/// Stores order technology should be granted in each category
+		/// </summary>
+		public Dictionary<string, List<string>> TechOrder { get; set; }
+		
+
 		public Vic2World(Eu4Save eu4Save)
 		{
 
@@ -30,17 +41,48 @@ namespace Eu4ToVic2
 			GenerateCountries();
 		}
 
+		public Vic2Country GetCountry(Eu4Country eu4Country)
+		{
+			return Vic2Countries.Find(c => c.Eu4Country == eu4Country);
+		}
+		public void ValueEffect(PdxSublist effects, Action<Dictionary<string, float>> callback, string key, float value)
+		{
+			if (effects.Sublists["values"].Sublists.ContainsKey(key))
+			{
+				effects.Sublists["values"].GetAllMatchingSublists(key, (sub) =>
+				{
+					var average = 0f;
+					if (sub.KeyValuePairs.ContainsKey("average"))
+					{
+						average = float.Parse(sub.KeyValuePairs["average"]);
+					}
+					var min = float.MinValue;
+					if (sub.KeyValuePairs.ContainsKey("minimum"))
+					{
+						min = float.Parse(sub.KeyValuePairs["minimum"]);
+					}
+					var max = float.MaxValue;
+					if (sub.KeyValuePairs.ContainsKey("maximum"))
+					{
+						max = float.Parse(sub.KeyValuePairs["maximum"]);
+					}
+
+					callback(sub.KeyValuePairs.ToDictionary(effect => effect.Key, effect => Math.Min(max, Math.Max(min, (value - average))) * float.Parse(effect.Value)));
+				});
+
+			}
+		}
 		// do not look in here, it's an ugly mess
 		private void LoadVicTech()
 		{
+			Console.WriteLine("Loading vic2 technologies...");
 			var techs = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"common\technology.txt"));
 			var techTypes = techs.Sublists["folders"];
-			var techOrder = new Dictionary<string, List<string>>();
-
+			TechOrder = new Dictionary<string, List<string>>();
 			foreach (var techType in techTypes.Sublists)
 			{
-				techOrder.Add(techType.Key, new List<string>());
-				var techTypeFile = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, $@"technologies\{techType.Key}"));
+				TechOrder.Add(techType.Key, new List<string>());
+				var techTypeFile = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, $@"technologies\{techType.Key}.txt"));
 				//list instead of dictionary to retain order
 				var subTypes = new List<KeyValuePair<string, Queue<string>>>();
 				foreach (var tech in techTypeFile.Sublists)
@@ -57,7 +99,7 @@ namespace Eu4ToVic2
 				{
 					for (var i = 0; i < subTypesList.Count; i++)
 					{
-						subTypesList[i].Dequeue();
+						TechOrder[techType.Key].Add(subTypesList[i].Dequeue());
 						if(subTypesList[i].Count == 0)
 						{
 							subTypesList.RemoveAt(i--);
@@ -68,13 +110,7 @@ namespace Eu4ToVic2
 				}
 			}
 
-			var dir = Directory.GetFiles(Path.Combine(VIC2_DIR, @"\techonolgies\"));
-			foreach (var file in dir)
-			{
-				var name = Path.GetFileNameWithoutExtension(file);
-			}
-			var armyTech = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"technologies\army_tech.txt"));
-			var commerceTech = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"technologies\commerce_tech.txt"));
+			
 		}
 
 		private void LoadPoliticalParties()
@@ -103,8 +139,10 @@ namespace Eu4ToVic2
 
 		private void LoadEffects()
 		{
-			Console.WriteLine("Loading effects.txt...");
-			Effects = PdxSublist.ReadFile("effects.txt");
+			Console.WriteLine("Loading countryEffects.txt...");
+			CountryEffects = PdxSublist.ReadFile("countryEffects.txt");
+			Console.WriteLine("Loading provinceEffects.txt...");
+			ProvinceEffects = PdxSublist.ReadFile("provinceEffects.txt");
 		}
 
 		private void GenerateCountries()
@@ -119,6 +157,7 @@ namespace Eu4ToVic2
 
 			Console.WriteLine($"Created {Vic2Countries.Count} Vic2 countries...");
 		}
+
 	}
 
 	public static class Policies {

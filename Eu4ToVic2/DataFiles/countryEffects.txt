@@ -1,4 +1,4 @@
-# effects that this groups have on stuff
+# effects that things have on country stuff
 #########################
 # Categories of stuff:	#
 #########################
@@ -6,8 +6,13 @@
 #	effects idea groups may have
 # 	applies for every idea unlocked in that group
 # }
-#
-#
+# country_flags = {
+# 	effects country modifiers/flags may have
+# }
+# religion = {}
+# government = {}
+# policies = {}
+# values = {}
 ############
 # EFFECTS: #
 ############
@@ -467,6 +472,8 @@ policies = {
 	}
 	the_statute_of_monopolies = {
 		trade_policy = -5
+		
+		commerce_tech_school = 5
 	}
 	public_legitimacy  = {
 		vote_franschise = 5
@@ -518,6 +525,7 @@ values = {
 	#each value below 50 counts as negative legitimacy
 	legitimacy = {
 		# this means the value is subtracted by 50 before multiplying, such that values below 50 count as a negative
+		# a value can have multiple entries with different averages
 		average = 50
 		consciousness = -0.01	
 	}
@@ -548,17 +556,21 @@ values = {
 	
 	# todo
 	adm_tech = {
-		industry_tech = 0.25
-		commerce_tech = 0.125
+		average = 28
+		industry_tech = 2
+		commerce_tech = 1
 	}
 	dip_tech = {
-		commerce_tech = 0.125
-		culture_tech = 0.25
-		navy_tech = 0.125
+		average = 28
+		commerce_tech = 1
+		culture_tech = 2
+		navy_tech = 1
 	}
 	mil_tech = {
-		army_tech = 0.25
-		navy_tech = 0.125
+		average = 28
+		army_tech = 2
+		navy_tech = 1
 	}
+	
 	
 }

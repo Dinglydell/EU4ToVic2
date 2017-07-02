@@ -23,6 +23,8 @@ namespace Eu4ToVic2
 
 		public NV NationalValues { get; set; }
 
+		public TechSchoolValues TechSchools { get; set; }
+
 		public float Literacy { get; set; }
 		public float Consciousness { get; set; }
 		public float Plurality { get; set; }
@@ -32,13 +34,16 @@ namespace Eu4ToVic2
 
 		public float Prestige { get; set; }
 
-		public Reforms Reforms { get; set; }		
+		public Reforms Reforms { get; set; }
 
 		public UHouse UpperHouse { get; set; }
 
 		public PoliticalParty RulingParty { get; set; }
 
 		public List<PoliticalParty> PoliticalParties { get; set; }
+
+		public List<string> Techonologies { get; set; }
+
 
 		public Vic2Country(Vic2World vic2World, Eu4Country eu4Country)
 		{
@@ -74,6 +79,8 @@ namespace Eu4ToVic2
 		{
 			NationalValues = new NV();
 
+			TechSchools = new TechSchoolValues();
+
 			Reforms = new Reforms();
 			var reforms = new Dictionary<Type, float>();
 
@@ -81,20 +88,59 @@ namespace Eu4ToVic2
 
 			PoliticalParties = new List<PoliticalParty>();
 			var baseModifier = new IdeologyModifier();
+
+			Techonologies = new List<string>();
+			var techInvestment = new Dictionary<string, float>();
+			foreach (var techCategory in vic2World.TechOrder.Keys)
+			{
+				techInvestment.Add(techCategory, 0);
+			}
 			IterateEffects(vic2World, (Dictionary<string, float> effects) =>
 			{
 				CalcNationalValues(effects);
+				CalcTechSchool(effects);
 				CalcReforms(effects, reforms);
 				CalcUpperHouse(effects);
 				CalcPoliticalParties(effects, baseModifier);
 				CalcLiteracy(effects);
 				CalcConsciousness(effects);
 				CalcMilitancy(effects);
+				CalcTechnology(effects, techInvestment);
 			});
 			FinaliseReforms(reforms);
 			FinalisePoliticalParties(vic2World, baseModifier);
+			FinaliseTechnology(techInvestment, vic2World.TechOrder);
 
+		}
 
+		private void FinaliseTechnology(Dictionary<string, float> techInvestment, Dictionary<string, List<string>> techOrder)
+		{
+			foreach (var tech in techInvestment)
+			{
+				Techonologies.AddRange(techOrder[tech.Key].GetRange(0, Math.Max(0, (int)tech.Value)));
+			}
+		}
+
+		private void CalcTechnology(Dictionary<string, float> effects, Dictionary<string, float> techInvestment)
+		{
+			foreach(var tech in techInvestment.Keys.ToList())
+			{
+				if (effects.ContainsKey(tech))
+				{
+					techInvestment[tech] += effects[tech];
+				}
+			}
+		}
+
+		private void CalcTechSchool(Dictionary<string, float> effects)
+		{
+			foreach (var ts in Enum.GetNames(typeof(TechSchool)))
+			{
+				if (effects.ContainsKey(ts))
+				{
+					TechSchools.AddSchool(ts, effects[ts]);
+				}
+			}
 		}
 
 		private void CalcMilitancy(Dictionary<string, float> effects)
@@ -151,7 +197,7 @@ namespace Eu4ToVic2
 					polParty.SetIssue(pol.Key, pol.Value);
 				}
 				PoliticalParties.Add(polParty);
-				if(ideology.Key == UpperHouse.GetMode())
+				if (ideology.Key == UpperHouse.GetMode())
 				{
 
 				}
@@ -248,70 +294,113 @@ namespace Eu4ToVic2
 		}
 		private void IterateEffects(Vic2World vic2World, Action<Dictionary<string, float>> callback)
 		{
-			//idea groups
-			foreach (var idea in Eu4Country.Ideas)
+			IterateCountryEffects(vic2World, Eu4Country, vic2World.CountryEffects, callback);
+
+		}
+		public static void IterateCountryEffects(Vic2World vic2World, Eu4Country country, PdxSublist effects, Action<Dictionary<string, float>> callback)
+		{
+			if (effects.Sublists.ContainsKey("ideas"))
 			{
-				if (vic2World.Effects.Sublists["ideas"].Sublists.ContainsKey(idea.Key))
+				//idea groups
+				foreach (var idea in country.Ideas)
 				{
-					callback(vic2World.Effects.Sublists["ideas"].Sublists[idea.Key].KeyValuePairs.ToDictionary(effect => effect.Key, effect => idea.Value * float.Parse(effect.Value)));
+					if (effects.Sublists["ideas"].Sublists.ContainsKey(idea.Key))
+					{
+						callback(effects.Sublists["ideas"].Sublists[idea.Key].KeyValuePairs.ToDictionary(effect => effect.Key, effect => (idea.Value + 1) * float.Parse(effect.Value)));
+					}
 				}
 			}
 
 			// country flags
-			foreach (var flag in Eu4Country.Flags)
+			if (effects.Sublists.ContainsKey("country_flags"))
 			{
-				if (vic2World.Effects.Sublists["country_flags"].Sublists.ContainsKey(flag))
+				foreach (var flag in country.Flags)
 				{
-					callback(vic2World.Effects.Sublists["country_flags"].Sublists[flag].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+					if (effects.Sublists["country_flags"].Sublists.ContainsKey(flag))
+					{
+						callback(effects.Sublists["country_flags"].Sublists[flag].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+					}
 				}
 			}
 			// religion
-			if (vic2World.Effects.Sublists["religion"].Sublists.ContainsKey(Eu4Country.Religion))
+			if (effects.Sublists.ContainsKey("religion"))
 			{
-				callback(vic2World.Effects.Sublists["religion"].Sublists[Eu4Country.Religion].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+				if (effects.Sublists["religion"].Sublists.ContainsKey(country.Religion))
+				{
+					callback(effects.Sublists["religion"].Sublists[country.Religion].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+				}
 			}
 
 			// government
-			if (vic2World.Effects.Sublists["government"].Sublists.ContainsKey(Eu4Country.Government))
+			if (effects.Sublists.ContainsKey("government"))
 			{
-				callback(vic2World.Effects.Sublists["government"].Sublists[Eu4Country.Government].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+				if (effects.Sublists["government"].Sublists.ContainsKey(country.Government))
+				{
+					callback(effects.Sublists["government"].Sublists[country.Government].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+				}
 			}
 
 			// policies
-			foreach (var policy in Eu4Country.Policies)
+			if (effects.Sublists.ContainsKey("policies"))
 			{
-				if (vic2World.Effects.Sublists["policies"].Sublists.ContainsKey(policy))
+				foreach (var policy in country.Policies)
 				{
-					callback(vic2World.Effects.Sublists["policies"].Sublists[policy].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+					if (effects.Sublists["policies"].Sublists.ContainsKey(policy))
+					{
+						callback(effects.Sublists["policies"].Sublists[policy].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+					}
 				}
 			}
 
 			// values
-			//mercantilism
-			ValueEffect(vic2World, callback, "mercantilism", Eu4Country.Mercantilism);
-			ValueEffect(vic2World, callback, "legitimacy", Eu4Country.Legitimacy);// - 50);
-			ValueEffect(vic2World, callback, "republican_tradition", Eu4Country.RepublicanTradition);// - 50);
-			ValueEffect(vic2World, callback, "stability", Eu4Country.Stability);
-			ValueEffect(vic2World, callback, "absolutism", Eu4Country.Absolutism);
 
+			vic2World.ValueEffect(effects, callback, "mercantilism", country.Mercantilism);
+			vic2World.ValueEffect(effects, callback, "legitimacy", country.Legitimacy);// - 50);
+			vic2World.ValueEffect(effects, callback, "republican_tradition", country.RepublicanTradition);// - 50);
+			vic2World.ValueEffect(effects, callback, "stability", country.Stability);
+			vic2World.ValueEffect(effects, callback, "absolutism", country.Absolutism);
+			// tech
+			vic2World.ValueEffect(effects, callback, "adm_tech", country.AdmTech);
+			vic2World.ValueEffect(effects, callback, "dip_tech", country.DipTech);
+			vic2World.ValueEffect(effects, callback, "mil_tech", country.MilTech);
 		}
-
-		private void ValueEffect(Vic2World vic2World, Action<Dictionary<string, float>> callback, string key, float value)
-		{
-			if (vic2World.Effects.Sublists["values"].Sublists.ContainsKey(key))
-			{
-				var average = 0f;
-				if (vic2World.Effects.Sublists["values"].Sublists[key].KeyValuePairs.ContainsKey("average"))
-				{
-					average = float.Parse(vic2World.Effects.Sublists["values"].Sublists[key].KeyValuePairs["average"]);
-				}
-
-
-				callback(vic2World.Effects.Sublists["values"].Sublists[key].KeyValuePairs.ToDictionary(effect => effect.Key, effect => (value - average) * float.Parse(effect.Value)));
-			}
-		}
+		
 	}
 
+	public enum TechSchool
+	{
+		traditional_academic, army_tech_school, naval_tech_school, industrial_tech_school, culture_tech_school, commerce_tech_school, prussian_tech_school
+	}
+
+	public class TechSchoolValues
+	{
+		private Dictionary<TechSchool, float> TechSchools { get; set; }
+		public TechSchool TechSchool
+		{
+			get
+			{
+				return TechSchools.FirstOrDefault(ts => ts.Value == TechSchools.Values.Max()).Key;
+			}
+		}
+
+		public TechSchoolValues()
+		{
+			TechSchools = new Dictionary<TechSchool, float>();
+		}
+
+		public void AddSchool(string key, float value)
+		{
+			var school = (TechSchool)Enum.Parse(typeof(TechSchool), key);
+			if (!TechSchools.ContainsKey(school))
+			{
+				TechSchools.Add(school, 0);
+			}
+			TechSchools[school] += value;
+		}
+
+
+
+	}
 
 	public enum Ideology
 	{
@@ -447,13 +536,15 @@ namespace Eu4ToVic2
 		/// <returns></returns>
 		internal Ideology GetMode()
 		{
-			if(conservative > 33)
+			if (conservative > 33)
 			{
 				return Ideology.conservative;
-			} else if(liberal > 33)
+			}
+			else if (liberal > 33)
 			{
 				return Ideology.liberal;
-			} else
+			}
+			else
 			{
 				return Ideology.reactionary;
 			}

@@ -52,6 +52,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProvinceMapper.cs" />
     <Compile Include="Vic2Country.cs" />
+    <Compile Include="Vic2Province.cs" />
     <Compile Include="Vic2World.cs" />
   </ItemGroup>
   <ItemGroup>

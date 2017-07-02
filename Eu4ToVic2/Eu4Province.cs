@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Eu4ToVic2
 {
-	class Eu4Province
+	public class Eu4Province
 	{
 		public int ProvinceID { get; set; }
 
@@ -21,6 +21,15 @@ namespace Eu4ToVic2
 
 		public Dictionary<DateTime, string> CulturalHistory { get; set; }
 		public Dictionary<DateTime, string> ReligiousHistory { get; set; }
+
+		public int FortLevel { get; set; }
+		public int BaseTax { get; set; }
+		public int BaseProduction { get; set; }
+		public int BaseManpower { get; set; }
+
+		public string Estate { get; set; }
+
+		public List<string> Flags { get; set; }
 
 		public Eu4Province(PdxSublist province, Eu4Save save)
 		{
@@ -47,6 +56,25 @@ namespace Eu4ToVic2
 
 			//Culture = CulturalHistory.Last().Value;
 			//Religion = ReligiousHistory.Last().Value;
+
+			if (province.KeyValuePairs.ContainsKey("fort_level"))
+			{
+				FortLevel = int.Parse(province.KeyValuePairs["fort_level"]);
+			}
+
+			BaseTax = int.Parse(province.KeyValuePairs["base_tax"]);
+			BaseProduction = int.Parse(province.KeyValuePairs["base_production"]);
+			BaseManpower = int.Parse(province.KeyValuePairs["base_manpower"]);
+			
+			if (province.KeyValuePairs.ContainsKey("estate"))
+			{
+				Estate = Eu4ToVic2.Estate.EstateTypes[int.Parse(province.KeyValuePairs["estate"])];
+			}
+
+			if (province.Sublists.ContainsKey("flags"))
+			{
+				Flags = province.Sublists["flags"].KeyValuePairs.Keys.ToList();
+			}
 
 			if (ProvinceID == 233)
 			{

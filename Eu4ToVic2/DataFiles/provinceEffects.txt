@@ -1,0 +1,90 @@
+# effects that things have on province stuff
+
+#
+# <poptype> = <value>
+# increases/decreases population with this job
+# 
+# relative_<poptype> = <value>
+# increases/decreases population with this job as a % of total province population - applied after all fixed value pop modifiers are applied
+
+
+owner = {
+	# any category/subcategory from countryEffects.txt can be used here and will apply based on the province owner
+}
+
+values = {
+	base_tax = {
+		labourers = 10000
+		
+	}
+	base_tax = {
+		average = 5
+		minimum = 0
+		aristocrats = 20
+		bureaucrats = 50
+		clergymen = 20
+	}
+	base_tax = {
+		average = 10
+		minimum = 0
+		aristocrats = 30
+		bureaucrats = 50
+		clergymen = 40
+	}
+	base_production = {
+		# doesn't matter if farmers or labourers, code automatically switches based on the RGO in the province
+		labourers = 12500
+	}
+	base_production = {
+		average = 5
+		minimum = 0
+		artisans = 5000
+		aristocrats = 20
+		clergymen = 20
+	}
+	base_production = {
+		average = 10
+		minimum = 0
+		artisans = 5000
+		aristocrats = 30
+		capitalists = 50
+		clergymen = 40
+	}
+	base_manpower = {
+		soldiers = 250
+		labourers = 1000
+	}
+	base_manpower = {
+		minimum = 0
+		average = 5
+		officers = 50
+		clergymen = 20
+	}
+	base_manpower = {
+		# todo - minimum will mean any value below the minimum is treated as 0 - applied AFTER average
+		minimum = 0
+		average = 10
+		clergymen = 40
+	}
+	
+	
+	#adm_efficiency = {
+	#	relative_bureaucrats = 0.001
+	#}
+}
+
+estate = {
+	estate_nobles  = {
+		relative_aristocrats = 0.01
+	}
+	estate_burghers = {
+		relative_capitalists = 0.01
+	}
+	estate_church = {
+		relative_clergymen = 0.01
+	}
+}
+
+province_flags = {
+	
+}
