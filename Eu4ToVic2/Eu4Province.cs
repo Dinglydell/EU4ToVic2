@@ -62,9 +62,9 @@ namespace Eu4ToVic2
 				FortLevel = int.Parse(province.KeyValuePairs["fort_level"]);
 			}
 
-			BaseTax = int.Parse(province.KeyValuePairs["base_tax"]);
-			BaseProduction = int.Parse(province.KeyValuePairs["base_production"]);
-			BaseManpower = int.Parse(province.KeyValuePairs["base_manpower"]);
+			BaseTax = (int)float.Parse(province.KeyValuePairs["base_tax"]);
+			BaseProduction = (int)float.Parse(province.KeyValuePairs["base_production"]);
+			BaseManpower = (int)float.Parse(province.KeyValuePairs["base_manpower"]);
 			
 			if (province.KeyValuePairs.ContainsKey("estate"))
 			{
@@ -96,7 +96,10 @@ namespace Eu4ToVic2
 				if (entry.Value.KeyValuePairs.ContainsKey(type))
 				{
 					var date = PdxSublist.ParseDate(entry.Value.Key);
-					storedHistory[date] = entry.Value.GetStringValue(type);
+					entry.Value.GetAllMatchingKVPs(type, v =>
+					{
+						storedHistory[date] = v;
+					});
 				}
 			}
 			return storedHistory;

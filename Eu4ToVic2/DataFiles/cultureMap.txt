@@ -61,14 +61,14 @@ link = { v2 = australian eu4 = english region = australia }
 link = { v2 = australian eu4 = english region = australia_region }
 link = { v2 = texan eu4 = english eu4 = american region = central_american }
 link = { v2 = texan eu4 = english eu4 = american region = texas_area }
-link = { v2 = english eu4 = english }
-link = { v2 = scottish eu4 = scottish eu4 = highland_scottish }
+link = { v2 = british eu4 = english }
+link = { v2 = british eu4 = scottish eu4 = highland_scottish }
 link = { v2 = anglo_saxon eu4 = anglo_saxon }
 link = { v2 = pictish eu4 = pictish }
 link = { v2 = yankee eu4 = american }
 
 # Celtic - welsh, irish
-link = { v2 = welsh eu4 = welsh eu4 = cornish }
+link = { v2 = british eu4 = welsh eu4 = cornish }
 link = { v2 = irish eu4 = irish }
 
 # Latin - lombard, umbrian, sicilian, ligurian, piedmontese, romagnan, sardinian, tuscan, venetian

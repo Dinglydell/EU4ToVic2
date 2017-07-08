@@ -15,7 +15,7 @@ owner = {
 values = {
 	base_tax = {
 		labourers = 10000
-		
+		bureaucrats = 50
 	}
 	base_tax = {
 		average = 5
@@ -34,6 +34,7 @@ values = {
 	base_production = {
 		# doesn't matter if farmers or labourers, code automatically switches based on the RGO in the province
 		labourers = 12500
+		artisans = 1000
 	}
 	base_production = {
 		average = 5
@@ -71,6 +72,73 @@ values = {
 	#adm_efficiency = {
 	#	relative_bureaucrats = 0.001
 	#}
+}
+
+# TODO:
+building = {
+	workshop = {
+		relative_artisans = 0.01
+	}
+	temple = {
+		relative_clergymen = 0.01
+	}
+	barracks = {
+		relative_soliders = 0.01
+	}
+	courthouse = {
+		relative_bureaucrats = 0.01
+	}
+	regimental_camp = {
+		relative_soliders = 0.01
+	}
+	cathedral = {
+		relative_clergymen = 0.02
+	}
+	
+	university = {
+		#literacy = 1
+	}
+	
+	trade_depot = {
+		#relative_artisans = 0.02
+	}
+	
+	training_fields = {
+		relative_soliders = 0.02
+	}
+	stock_exchange = {
+		relative_capitalists = 0.01
+	}
+	counting_house = {
+		relative_artisans = 0.02
+	}
+	town_hall = {
+		relative_bureaucrats = 0.02
+	}
+	conscription_center = {
+		relative_soliders = 0.02
+	}
+	
+	wharf = {
+		relative_craftsmen = 0.02
+		relative_artisans = 0.005
+	}
+	weapons = {
+		relative_craftsmen = 0.02
+		relative_artisans = 0.005
+	}
+	textile = {
+		relative_craftsmen = 0.02
+		relative_artisans = 0.005
+	}
+	plantations = {
+		relative_craftsmen = 0.02
+		relative_artisans = 0.005
+	}
+	tradecompany = {
+		relative_craftsmen = 0.02
+		relative_artisans = 0.005
+	}
 }
 
 estate = {

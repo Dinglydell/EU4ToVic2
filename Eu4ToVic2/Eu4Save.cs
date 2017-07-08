@@ -16,6 +16,10 @@ namespace Eu4ToVic2
 		public string PlayerTag { get; set; }
 		public PdxSublist RootList { get; set; }
 
+		public Dictionary<string, Eu4Religion> Religions { get; set; }
+		public Dictionary<string, Eu4ReligionGroup> ReligiousGroups { get; set; }
+
+
 		public Dictionary<string, Eu4Country> Countries { get; set; }
 		public Dictionary<int, Eu4Province> Provinces { get; private set; }
 
@@ -29,10 +33,37 @@ namespace Eu4ToVic2
 			LoadCountryData();
 			Console.WriteLine($"Average merc: {Countries.Where(c => c.Value.Exists).Sum(c => c.Value.Mercantilism) / Countries.Count}");
 			LoadProvinceData();
+
+			LoadReligionData();
 			Console.WriteLine("EU4 data loaded.");
 		}
 
-
+		private void LoadReligionData()
+		{
+			Religions = new Dictionary<string, Eu4Religion>();
+			ReligiousGroups = new Dictionary<string, Eu4ReligionGroup>();
+			var relFiles = GetFilesFor(@"common\religions");
+			foreach (var relFile in relFiles)
+			{
+				var religions = PdxSublist.ReadFile(relFile);
+				foreach (var relGroup in religions.Sublists)
+				{
+					if (!ReligiousGroups.ContainsKey(relGroup.Key))
+					{
+						ReligiousGroups[relGroup.Key] = new Eu4ReligionGroup(relGroup.Key);
+					}
+					foreach (var rel in relGroup.Value.Sublists)
+					{
+						if (!Religions.ContainsKey(rel.Key) && rel.Key != "flag_emblem_index_range")
+						{
+							Religions[rel.Key] = ReligiousGroups[relGroup.Key].AddReligion(rel.Value);
+						}
+					}
+					
+				}
+			}
+			
+		}
 
 		private void LoadCountryData()
 		{
@@ -144,11 +175,16 @@ namespace Eu4ToVic2
 			//	
 		}
 
+		public Eu4Religion GetReligion(string religion)
+		{
+			return Religions[religion];
+		}
+
 		//private PdxSublist RunLine(string line, PdxSublist currentList)
 		//{
 		//	string key = null;
 		//	var value = RemoveWhitespace(line.Substring(line.IndexOf('=') + 1));
-			
+
 		//	if (line.Contains('='))
 		//	{
 		//		key = RemoveWhitespace(line.Substring(0, line.IndexOf('=')));
@@ -156,7 +192,7 @@ namespace Eu4ToVic2
 		//	else if (value == "}")
 		//	{
 		//		return currentList.Parent;
-				
+
 		//	}
 		//	var parent = false;
 		//	if (value.Contains('}'))
@@ -180,7 +216,7 @@ namespace Eu4ToVic2
 		//			currentList = list;
 		//		}
 
-				
+
 		//	}
 		//	else if (key == null && !value.Contains('"'))
 		//	{
@@ -195,6 +231,6 @@ namespace Eu4ToVic2
 		//	return parent ? currentList.Parent : currentList;
 		//}
 
-		
+
 	}
 }

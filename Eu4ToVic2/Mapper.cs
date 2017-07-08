@@ -43,8 +43,11 @@ namespace Eu4ToVic2
 		public List<Monarchy> Monarchies { get; set; }
 
 		public List<string> Vic2Cultures { get; set; }
-		public Mapper()//string mappingPath)
+		public Vic2World World { get; private set; }
+
+		public Mapper(Vic2World vic2World)//string mappingPath)
 		{
+			World = vic2World;
 			//instance = this;
 			Country = Mappings("country_mappings.txt");
 			Culture = Mappings("cultureMap.txt");
@@ -104,17 +107,22 @@ namespace Eu4ToVic2
 
 		public string GetV2Culture(string eu4Culture)
 		{
-			return Map(Culture, eu4Culture);
+			return Map(Culture, eu4Culture) ?? eu4Culture;
 		}
 
 		public string GetV2Religion(string eu4Religion)
 		{
-			return Map(Religion, eu4Religion);
+			var religion = Map(Religion, eu4Religion);
+			if(religion == null)
+			{
+				religion = World.GenerateReligion(religion);
+			}
+			return religion;
 		}
 
 		public string GetV2Country(string eu4Country)
 		{
-			return Map(Country, eu4Country);
+			return Map(Country, eu4Country) ?? eu4Country;
 		}
 
 		public string GetV2Government(Eu4Country eu4Country)
@@ -138,7 +146,7 @@ namespace Eu4ToVic2
 		{
 			if (!map.ContainsKey(eu4Version))
 			{
-				return eu4Version;
+				return null;
 			}
 			return map[eu4Version];
 		}

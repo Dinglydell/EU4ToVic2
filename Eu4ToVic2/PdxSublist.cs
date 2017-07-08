@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Eu4ToVic2
@@ -10,7 +11,7 @@ namespace Eu4ToVic2
 	public class PdxSublist
 	{
 
-		public PdxSublist(PdxSublist parent, string key = null)
+		public PdxSublist(PdxSublist parent = null, string key = null)
 		{
 			this.Key = key;
 			this.Parent = parent;
@@ -64,9 +65,10 @@ namespace Eu4ToVic2
 			}
 			else
 			{
-
+				value.Key = key;
 				Sublists.Add(Uniquify(key, Sublists), value);
 			}
+			value.Parent = this;
 		}
 
 		/** Calls back on each value matching the key when there are multiple keys */
@@ -89,6 +91,46 @@ namespace Eu4ToVic2
 			}
 		}
 
+		internal void WriteToFile(StreamWriter file, int indentation = 0)
+		{
+			//using (var file = File.CreateText(path))
+			//{
+
+			// TODO: make KeyValueParis a Dictionary<string, List<string>> to properly solve the duplicate key issue
+			var rgx = new Regex(@"\d+$");
+			foreach (var kvp in KeyValuePairs)
+			{
+				var newKey =  rgx.Replace(kvp.Key, string.Empty);
+				if (!KeyValuePairs.ContainsKey(newKey))
+				{
+					newKey = kvp.Key;
+				}
+				file.WriteLine($"{new String('\t', indentation)}{newKey} = {kvp.Value}");
+			}
+			foreach (var v in Values)
+			{
+				file.WriteLine(new String('\t', indentation) + v);
+			}
+			foreach (var sub in Sublists)
+			{
+				var newKey = rgx.Replace(sub.Key, string.Empty);
+				if (!Sublists.ContainsKey(newKey))
+				{
+					newKey = sub.Key;
+				}
+				file.WriteLine($"{new String('\t', indentation)}{newKey} = {{");
+				sub.Value.WriteToFile(file, indentation + 1);
+				file.WriteLine("}");
+			}
+			foreach (var sub in KeylessSublists)
+			{
+				file.WriteLine(new String('\t', indentation) + "{");
+				sub.WriteToFile(file, indentation + 1);
+				file.WriteLine(new String('\t', indentation) + "}");
+			}
+			//}
+		}
+
 		//public void AddNumber(float num)
 		//{
 		//	NumericValues.Add(num);
@@ -107,7 +149,7 @@ namespace Eu4ToVic2
 
 		public List<PdxSublist> KeylessSublists { get; set; }
 
-		public PdxSublist Parent { get; private set; }
+		public PdxSublist Parent { get; set; }
 		private static ReadState State { get; set; }
 		private static string ReadKey { get; set; }
 
@@ -138,13 +180,18 @@ namespace Eu4ToVic2
 				{
 					throw new Exception("Not a valid file");
 				}
+
 			}
-			var rootList = new PdxSublist(null);
+			var rootList = new PdxSublist(null, filePath);
 			var currentList = rootList;
 			//var lineNumber = 0;
 			while ((line = file.ReadLine()) != null)
 			{
 				//lineNumber++;
+				//if(lineNumber == 10)
+				//{
+				//	Console.WriteLine("Oh");
+				//}
 				currentList = RunLine(line, currentList);
 			}
 			if (currentList != rootList)
@@ -155,10 +202,14 @@ namespace Eu4ToVic2
 			return rootList;
 		}
 
+		internal void AddDate(string key, DateTime date)
+		{
+			AddString(key, $"{date.Year}.{date.Month}.{date.Day}");
+		}
 
 		public static PdxSublist RunLine(string line, PdxSublist currentList)
 		{
-			
+
 			if (line.Contains('#'))
 			{
 				//filter out comment
@@ -189,34 +240,44 @@ namespace Eu4ToVic2
 				State = ReadState.value;
 				ReadKey = key;
 			}
-			var parent = false;
+			var parent = 0;
 			if (value.Contains('}'))
 			{
+				parent = value.Count(c => c == '}');
+				
+				
 				value = RemoveWhitespace(value.Substring(0, value.IndexOf('}')));
-				parent = true;
+				
 			}
 
 			if (value.FirstOrDefault() == '{')
 			{
 				var list = new PdxSublist(currentList, key);
-				currentList.AddSublist(key, list);
-
+				
 				if (line.Contains('}'))
 				{
-					parent = false;
-					var open = line.IndexOf('{');
-					value = line.Substring(open + 1 , line.IndexOf('}') - open - 1);
-					if (value.Contains('='))
+					if (line.IndexOf('}') < line.IndexOf('{'))
 					{
-						SingleLineKeyValuePairs(key, value, list);
+						currentList = currentList.Parent;
+						key = key.Substring(key.IndexOf('}') + 1);
+						list.Key = key;
+						list.Parent = currentList;
 					}
 					else {
-						SingleLineArray(key, value, list);
+						parent = 1;
+						var open = line.IndexOf('{');
+						value = line.Substring(open + 1, line.IndexOf('}') - open - 1);
+						if (value.Contains('='))
+						{
+							SingleLineKeyValuePairs(key, value, list);
+						}
+						else {
+							SingleLineArray(key, value, list);
+						}
 					}
 				}
-				else {
-					currentList = list;
-				}
+				currentList.AddSublist(key, list);
+				currentList = list;
 
 
 			}
@@ -230,7 +291,11 @@ namespace Eu4ToVic2
 			{
 				currentList.AddString(key, value);
 			}
-			return parent ? currentList.Parent : currentList;
+			for (var i = 0; i < parent; i++)
+			{
+				currentList = currentList.Parent;
+			}
+			return currentList;
 		}
 
 		private static void SingleLineKeyValuePairs(string key, string value, PdxSublist currentList)
@@ -241,7 +306,7 @@ namespace Eu4ToVic2
 			bool inQuotes = false;
 			foreach (var ch in value)
 			{
-				if(ch == '"')
+				if (ch == '"')
 				{
 					//toggle whether we're currently reading inside quotes
 					inQuotes = !inQuotes;
@@ -271,7 +336,7 @@ namespace Eu4ToVic2
 						continue;
 					}
 
-					
+
 				}
 				//if we're reading the key, add the character to the key else add it to the value
 				if (readingKey)
@@ -292,10 +357,10 @@ namespace Eu4ToVic2
 
 		private static void SingleLineArray(string key, string value, PdxSublist currentList)
 		{
-			var numValues = value.Split(' ');
+			var numValues = value.Trim().Split(' ');
 			foreach (var val in numValues)
 			{
-				currentList.AddString(key, val);
+				currentList.AddString(null, val);
 			}
 		}
 

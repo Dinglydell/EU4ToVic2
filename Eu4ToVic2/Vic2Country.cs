@@ -43,7 +43,7 @@ namespace Eu4ToVic2
 		public List<PoliticalParty> PoliticalParties { get; set; }
 
 		public List<string> Techonologies { get; set; }
-
+		public DateTime LastElection { get; private set; }
 
 		public Vic2Country(Vic2World vic2World, Eu4Country eu4Country)
 		{
@@ -59,6 +59,7 @@ namespace Eu4ToVic2
 
 			Government = vic2World.V2Mapper.GetV2Government(eu4Country);
 
+			Capital = vic2World.GetBestVic2ProvinceMatch(eu4Country.Capital);
 
 			//base literacy
 			Literacy = 0.1f;
@@ -67,12 +68,66 @@ namespace Eu4ToVic2
 			// -100 - 100 scaled to 0 - 100
 			Prestige = (eu4Country.Prestige + 100) / 2;
 
-			CalcEffects(vic2World);
+			LastElection = eu4Country.LastElection;
 
+			CalcEffects(vic2World);
+			RulingParty = PoliticalParties.First(p => p.Ideology == UpperHouse.GetMode());
 			if (CountryTag == "ENG")
 			{
 				Console.WriteLine("GBR!");
 			}
+		}
+
+		public PdxSublist GetHistoryCountryFile()
+		{
+			var data = new PdxSublist(null);
+			data.AddString("capital", Capital.ToString());
+			data.AddString("primary_culture", PrimaryCulture);
+			AcceptedCultures.ForEach(c => data.AddString("culture", c));
+			data.AddString("religion", Religion);
+			data.AddString("government", Government);
+			data.AddString("plurality", Plurality.ToString());
+
+			data.AddString("nationalvalue", NationalValues.Value);
+			data.AddString("literacy", Literacy.ToString());
+			data.AddString("civilized", IsCivilised ? "yes" : "no");
+
+			data.AddString("prestige", Prestige.ToString());
+
+			Reforms.AddData(data);
+
+			Techonologies.ForEach(t => data.AddString(t, "1"));
+
+			data.AddString("consciousness", Consciousness.ToString());
+			// todo
+			data.AddString("nonstate_consciousness", (Consciousness / 3).ToString());
+
+			data.AddString("ruling_party", RulingParty.Name);
+
+			data.AddDate("last_election", LastElection);
+			data.AddSublist("upper_house", UpperHouse.GetData(data));
+			data.AddString("schools", Enum.GetName(typeof(TechSchool), TechSchools.TechSchool));
+			return data;
+		}
+
+		public PdxSublist GetCommonCountryFile()
+		{
+			var data = new PdxSublist(null);
+
+			var colour = new PdxSublist(data, "color");
+			colour.Values.Add(MapColour.Red.ToString());
+			colour.Values.Add(MapColour.Green.ToString());
+			colour.Values.Add(MapColour.Blue.ToString());
+			data.AddSublist("color", colour);
+
+			data.AddString("graphical_culture", GraphicalCulture);
+
+			foreach (var party in PoliticalParties)
+			{
+				data.AddSublist("party", party.GetData(data));
+			}
+
+			return data;
 		}
 
 		private void CalcEffects(Vic2World vic2World)
@@ -190,7 +245,7 @@ namespace Eu4ToVic2
 		{
 			foreach (var ideology in vic2World.IdeologyModifiers)
 			{
-				var polParty = new PoliticalParty(ideology.Key);
+				var polParty = new PoliticalParty(CountryTag + "_" + Enum.GetName(typeof(Ideology), ideology.Key), ideology.Key);
 				var totalModifier = baseModifier + ideology.Value;
 				foreach (var pol in totalModifier.Policies)
 				{
@@ -415,6 +470,9 @@ namespace Eu4ToVic2
 		public religious_policy religious_policy { get; set; }
 		public war_policy war_policy { get; set; }
 		public citizenship_policy citizenship_policy { get; set; }
+		public string Name { get;  }
+		public DateTime StartDate { get; set; }
+		public DateTime EndDate { get; set; }
 
 		/// <summary>
 		/// defines the upper limit of each position on each policy
@@ -455,9 +513,12 @@ namespace Eu4ToVic2
 			},
 		};
 
-		public PoliticalParty(Ideology ideology)
+		public PoliticalParty(string name, Ideology ideology)
 		{
+			Name = name;
 			Ideology = ideology;
+			StartDate = new DateTime(1830, 1, 1);
+			EndDate = new DateTime(1940, 1, 1);
 		}
 
 		public void SetIssue(Type key, float value)
@@ -481,6 +542,24 @@ namespace Eu4ToVic2
 			// set that policy
 			prop.SetValue(this, eVal);
 
+		}
+
+		public PdxSublist GetData(PdxSublist parent)
+		{
+			var partyData = new PdxSublist(parent, "party");
+			partyData.AddString("name", Name);
+			partyData.AddDate("start_date", StartDate);
+			partyData.AddDate("end_date", EndDate);
+			partyData.AddString("ideology", Enum.GetName(typeof(Ideology), Ideology));
+
+			foreach (var pos in policyPositions.Keys)
+			{
+				var prop = typeof(PoliticalParty).GetProperty(pos.Name);
+
+				partyData.AddString(pos.Name, Enum.GetName(pos, prop.GetValue(this)));
+			}
+
+			return partyData;
 		}
 	}
 
@@ -548,6 +627,19 @@ namespace Eu4ToVic2
 			{
 				return Ideology.reactionary;
 			}
+		}
+
+		internal PdxSublist GetData(PdxSublist parent)
+		{
+			var data = new PdxSublist(parent, "upper_house");
+			data.AddString("liberal", Liberal.ToString());
+			data.AddString("conservative", Conservative.ToString());
+			data.AddString("reactionary", Reactionary.ToString());
+			data.AddString("fascist", "0");
+			data.AddString("communist", "0");
+			data.AddString("anarcho_liberal", "0");
+			data.AddString("socialist", "0");
+			return data;
 		}
 	}
 	public enum slavery
@@ -633,6 +725,15 @@ namespace Eu4ToVic2
 		public pensions pensions { get; set; }
 		public health_care health_care { get; set; }
 		public school_reforms school_reforms { get; set; }
+
+		internal void AddData(PdxSublist data)
+		{
+			foreach (var reform in typeof(Reforms).GetProperties())
+			{
+				data.AddString(reform.Name, Enum.GetName(reform.PropertyType, reform.GetValue(this)));
+				
+			}
+		}
 	}
 
 
@@ -642,6 +743,26 @@ namespace Eu4ToVic2
 		public float Order { get; set; }
 		public float Liberty { get; set; }
 		public float Equality { get; set; }
+		public string Value { get
+			{
+				if(Order > Liberty)
+				{
+					if(Order >= Equality)
+					{
+						return "nv_order";
+					} else
+					{
+						return "nv_equality";
+					}
+				} else if(Equality > Liberty)
+				{
+					return "nv_equality";
+				} else
+				{
+					return "nv_liberty";
+				}
+			}
+		}
 
 		public NV()
 		{

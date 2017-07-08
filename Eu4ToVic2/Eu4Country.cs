@@ -24,6 +24,11 @@ namespace Eu4ToVic2
 		{
 		}
 
+		public Colour(List<string> rgb, byte multiplier): this((byte)(multiplier * float.Parse(rgb[0])), (byte)(multiplier * float.Parse(rgb[1])), (byte)(multiplier * float.Parse(rgb[2])))
+		{
+
+		}
+
 	}
 
 	public class Estate

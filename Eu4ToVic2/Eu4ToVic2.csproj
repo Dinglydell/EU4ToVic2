@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Eu4Religion.cs" />
     <Compile Include="Mapper.cs" />
     <Compile Include="Eu4Country.cs" />
     <Compile Include="Eu4Province.cs" />
@@ -53,6 +54,7 @@
     <Compile Include="ProvinceMapper.cs" />
     <Compile Include="Vic2Country.cs" />
     <Compile Include="Vic2Province.cs" />
+    <Compile Include="Vic2Religion.cs" />
     <Compile Include="Vic2World.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +11,10 @@ namespace Eu4ToVic2
 	class Vic2Province
 	{
 		public List<Eu4Province> Eu4Provinces;
+
+		public string Subfolder { get; set; }
+		public string FileName { get; set; }
+
 
 		public int ProvID { get; set; }
 		public Vic2Country Owner { get; set; }
@@ -32,20 +37,50 @@ namespace Eu4ToVic2
 		/// <param name="eu4Provinces">List of eu4 provinces mapped to this province</param>
 		public Vic2Province(int provID, PdxSublist defaultProvince, Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
 		{
+			Subfolder = Path.GetFileName(Path.GetDirectoryName(defaultProvince.Key));
+			FileName = Path.GetFileName(defaultProvince.Key);
 			Eu4Provinces = eu4Provinces;
 			ProvID = provID;
 			TradeGoods = defaultProvince.KeyValuePairs["trade_goods"];
 			LifeRating = int.Parse(defaultProvince.KeyValuePairs["life_rating"]);
+			Pops = new PopPool(eu4Provinces);
+			if (eu4Provinces.Count > 0)
+			{
+				// most common owner
+				Owner = vic2World.GetCountry(eu4Provinces.GroupBy(p => p.Owner).OrderByDescending(grp => grp.Count())
+		  .Select(grp => grp.Key).First());
+				// all countries that have cores in any of the eu4 counterparts gets cores here
+				Cores = eu4Provinces.SelectMany(p => p.Cores).Select(c => vic2World.GetCountry(c)).ToList();
 
-			// most common owner
-			Owner = vic2World.GetCountry(eu4Provinces.GroupBy(p => p.Owner).OrderByDescending(grp => grp.Count())
-	  .Select(grp => grp.Key).First());
-			// all countries that have cores in any of the eu4 counterparts gets cores here
-			Cores = eu4Provinces.SelectMany(p => p.Cores).Select(c => vic2World.GetCountry(c)).ToList();
+				FortLevel = eu4Provinces.Any(p => p.FortLevel > 6) ? 1 : 0;
+				
+				CalcEffects(vic2World, siblingProvinces, eu4Provinces);
+			}
+		}
 
-			FortLevel = eu4Provinces.Any(p => p.FortLevel > 6) ? 1 : 0;
+		public PdxSublist GetProvinceData()
+		{
+			var file = new PdxSublist(null);
+			if (Owner != null)
+			{
+				file.AddString("owner", Owner.CountryTag);
+				file.AddString("controller", Owner.CountryTag);
+			}
+			if (Cores != null)
+			{
+				foreach (var core in Cores)
+				{
+					file.AddString("core", core.CountryTag);
+				}
+			}
+			file.AddString("trade_goods", TradeGoods);
+			file.AddString("fort", FortLevel.ToString());
+			return file;
+		} 
 
-			CalcEffects(vic2World, siblingProvinces, eu4Provinces);
+		public PdxSublist GetPopData()
+		{
+			return Pops.GetData(ProvID);
 		}
 
 		private void CalcEffects(Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
@@ -54,6 +89,22 @@ namespace Eu4ToVic2
 			{
 				CalcPopEffects(effects, fromProvince);
 			});
+			IterateEffects(vic2World, siblingProvinces, eu4Provinces, (effects, fromProvince) =>
+			{
+				CalcRelativePopEffects(effects, fromProvince);
+			});
+		}
+
+		private void CalcRelativePopEffects(Dictionary<string, float> effects, Eu4Province fromProvince)
+		{
+			foreach (PopType popType in Enum.GetValues(typeof(PopType)))
+			{
+				var name = Enum.GetName(typeof(PopType), popType);
+				if (effects.ContainsKey("relative_" + name))
+				{
+					Pops.IncreaseJob(popType, effects["relative_" + name]);
+				}
+			}
 		}
 
 		private void CalcPopEffects(Dictionary<string, float> effects, Eu4Province fromProvince)
@@ -80,7 +131,7 @@ namespace Eu4ToVic2
 				};
 				// development
 				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_tax", prov.BaseTax / (float)siblingProvinces);
-				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_producion", prov.BaseProduction / (float)siblingProvinces);
+				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_production", prov.BaseProduction / (float)siblingProvinces);
 				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_manpower", prov.BaseManpower / (float)siblingProvinces);
 
 				// estates
@@ -91,7 +142,7 @@ namespace Eu4ToVic2
 
 
 				// province flags
-				if (vic2World.ProvinceEffects.Sublists.ContainsKey("province_flags"))
+				if (vic2World.ProvinceEffects.Sublists.ContainsKey("province_flags") && prov.Flags != null)
 				{
 					foreach (var flag in prov.Flags)
 					{
@@ -107,7 +158,7 @@ namespace Eu4ToVic2
 			}
 
 			// from owner country 
-			if (vic2World.ProvinceEffects.Sublists.ContainsKey("owner"))
+			if (Owner != null && vic2World.ProvinceEffects.Sublists.ContainsKey("owner") )
 			{
 				Vic2Country.IterateCountryEffects(vic2World, Owner.Eu4Country, vic2World.ProvinceEffects.Sublists["owner"], (effects) => { callback(effects, null); });
 			}
@@ -129,13 +180,13 @@ namespace Eu4ToVic2
 		public PopPool(List<Eu4Province> eu4Provinces)
 		{
 			pops = new Dictionary<string, Pop>();
-			culture = new Dictionary<Eu4Province, ValueSet<string>>();
-			religion = new Dictionary<Eu4Province, ValueSet<string>>();
-			foreach (var prov in eu4Provinces)
-			{
-				culture[prov] = HistoryEffect(prov.CulturalHistory);
-				religion[prov] = HistoryEffect(prov.ReligiousHistory);
-			}
+			//culture = new Dictionary<Eu4Province, ValueSet<string>>();
+			//religion = new Dictionary<Eu4Province, ValueSet<string>>();
+			//foreach (var prov in eu4Provinces)
+			//{
+			//	culture[prov] = HistoryEffect(prov.CulturalHistory);
+			//	religion[prov] = HistoryEffect(prov.ReligiousHistory);
+			//}
 		}
 		// calculate what proportions of the population should be what demographic based on the history of the province
 		private ValueSet<string> HistoryEffect(Dictionary<DateTime, string> history)
@@ -193,7 +244,12 @@ namespace Eu4ToVic2
 					history[re.Key] = new DemographicEvent().SetReligion(re.Value);
 				}
 			});
+			if (history.Count == 0)
+			{
+				history[new DateTime(1444, 11, 11)] = new DemographicEvent().SetCulture(fromProvince.Culture).SetReligion(fromProvince.Religion); ;
+			}
 			var orderedHistory = history.OrderBy(he => he.Key.Ticks);
+			
 			var popsList = new List<Pop>();
 			popsList.Add(new Pop(type, quantity, orderedHistory.First().Value.Culture, orderedHistory.First().Value.Religion));
 			KeyValuePair<DateTime, DemographicEvent> lastEntry = orderedHistory.First();
@@ -207,7 +263,7 @@ namespace Eu4ToVic2
 					var since = lastEntry.Key - entry.Key;
 					// 100 years -> +50%
 					//set[lastEntry.Value.Value] += (since.Days * 1.369863013698630136986301369863e-5);
-					popsList.AddRange(SplitPops((int)(since.Days * 1.369863013698630136986301369863e-5), popsList, c => lastEntry.Value.Culture, r => lastEntry.Value.Religion));
+					MergePops(popsList, SplitPops((int)(since.Days * 1.369863013698630136986301369863e-5), popsList, c => lastEntry.Value.Culture, r => lastEntry.Value.Religion));
 				}
 
 				if (entry.Value.Religion == null)
@@ -221,7 +277,7 @@ namespace Eu4ToVic2
 					else
 					{
 						// flip 50% of population to new culture. only true faith will convert culture as in eu4
-						popsList.AddRange(SplitPops(1 + quantity / 2, popsList.Where(p => p.Religion == majorityReligion).ToList(), c => entry.Value.Religion, r => r));
+						MergePops(popsList, SplitPops(1 + quantity / 2, popsList.Where(p => p.Religion == majorityReligion).ToList(), c => entry.Value.Religion, r => r));
 					}
 				}
 				else
@@ -230,17 +286,45 @@ namespace Eu4ToVic2
 					if (entry.Value.Culture == null)
 					{
 						// flip 50% of population to new religion
-						popsList.AddRange(SplitPops(1 + quantity / 2, popsList, c => c, r => entry.Value.Religion));
+						MergePops(popsList, SplitPops(1 + quantity / 2, popsList, c => c, r => entry.Value.Religion));
 					}
 					else
 					{
 						// flip 50% to new religion + culture
-						popsList.AddRange(SplitPops(1 + quantity / 2, popsList, c => entry.Value.Religion, r => entry.Value.Religion));
+						MergePops(popsList, SplitPops(1 + quantity / 2, popsList, c => entry.Value.Religion, r => entry.Value.Religion));
 					}
 				}
 
 			}
+			var finalSince = lastEntry.Key - new DateTime(1836, 1, 1);
+			// 100 years -> +50%
+			//set[lastEntry.Value.Value] += (since.Days * 1.369863013698630136986301369863e-5);
+			MergePops(popsList, SplitPops((int)(finalSince.Days * 1.369863013698630136986301369863e-5), popsList, c => lastEntry.Value.Culture, r => lastEntry.Value.Religion));
+			foreach (var pop in popsList)
+			{
+				AddPop(pop);
+			}
 		}
+		/// <summary>
+		/// Merges all pops in listB into listA
+		/// </summary>
+		/// <param name="listA"></param>
+		/// <param name="listB"></param>
+		private void MergePops(List<Pop> listA, List<Pop> listB)
+		{
+			foreach (var pop in listB)
+			{
+				var aPop = listA.Find(p => p.EquivalentTo(pop));
+				if(aPop == null)
+				{
+					listA.Add(pop);
+				} else
+				{
+					aPop.Size += pop.Size; 
+				}
+			}
+		}
+
 		/// <summary>
 		/// Converts of number of people who follow a religion to a new religion and culture, evenly across all pops of the old religion
 		/// </summary>
@@ -312,6 +396,26 @@ namespace Eu4ToVic2
 		{
 			return $"{type}/{culture}/{religion}";
 		}
+
+		internal PdxSublist GetData(int provID)
+		{
+			var data = new PdxSublist(null, provID.ToString());
+			foreach (var pop in Pops)
+			{
+				var popData = new PdxSublist(data, pop.Job);
+				popData.AddString("culture", pop.Culture);
+				popData.AddString("religion", pop.Religion);
+				popData.AddString("size", pop.Size.ToString());
+				data.AddSublist(pop.Job, popData);
+			}
+			return data;
+		}
+
+		internal void IncreaseJob(PopType popType, float relativeAmount)
+		{
+			var pops = SplitPops((int)(Pops.Sum(p => p.Size) * relativeAmount), Pops, c => c, r => r);
+			pops.ForEach(AddPop);
+		}
 	}
 	/// <summary>
 	/// A Dictionary of T, float that has a constant total value. Any time a value is modified it will adjust other values to make sure the sum is constant.
@@ -381,6 +485,11 @@ namespace Eu4ToVic2
 	{
 
 		public PopType Type { get; set; }
+		public string Job { get
+			{
+				return Enum.GetName(typeof(PopType), Type);
+			}
+		}
 		public int Size { get; set; }
 		public string Culture { get; set; }
 		public string Religion { get; set; }
@@ -412,6 +521,10 @@ namespace Eu4ToVic2
 			return newPop;
 		}
 
+		internal bool EquivalentTo(Pop pop)
+		{
+			return pop.Type == Type && pop.Religion == Religion && pop.Culture == Culture;
+		}
 	}
 
 	public class Vic2State
