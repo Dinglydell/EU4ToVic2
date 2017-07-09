@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Eu4ToVic2
 {
-	class Vic2World
+	public class Vic2World
 	{
 
 		public Eu4Save Eu4Save { get; set; }
@@ -19,6 +19,9 @@ namespace Eu4ToVic2
 		public Mapper V2Mapper { get; set; }
 		public List<Vic2Country> Vic2Countries { get; set; }
 		public List<Vic2Province> Vic2Provinces { get; set; }
+
+		
+
 		public PdxSublist CountryEffects { get; set; }
 		public PdxSublist ProvinceEffects { get; set; }
 		public Dictionary<Ideology, IdeologyModifier> IdeologyModifiers { get; set; }
@@ -30,6 +33,8 @@ namespace Eu4ToVic2
 		/// </summary>
 		public Dictionary<string, List<string>> TechOrder { get; set; }
 		public Dictionary<string, Vic2ReligionGroup> ReligiousGroups { get; set; }
+		internal Dictionary<string, Vic2CultureGroup> CultureGroups { get; private set; }
+		public Dictionary<string, Vic2Culture> Cultures { get; private set; }
 
 		public Vic2World(Eu4Save eu4Save)
 		{
@@ -42,6 +47,7 @@ namespace Eu4ToVic2
 			LoadPoliticalParties();
 			LoadVicTech();
 			LoadVicReligion();
+			LoadVicCulture();
 			Console.WriteLine("Constructing Vic2 world...");
 			GenerateCountries();
 			GenerateProvinces();
@@ -51,11 +57,28 @@ namespace Eu4ToVic2
 			CreateProvinceFiles();
 			CreatePopFiles();
 			CreateReligionFile();
+			CreateCultureFile();
 			Console.WriteLine("Done!");
+		}
+
+		
+
+		private void LoadVicCulture()
+		{
+			CultureGroups = new Dictionary<string, Vic2CultureGroup>();
+			Cultures = new Dictionary<string, Vic2Culture>();
+			var cultures = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"common\cultures.txt"));
+			foreach (var culGroup in cultures.Sublists)
+			{
+				var nextGroup = new Vic2CultureGroup(culGroup.Value);
+				CultureGroups[culGroup.Key] = nextGroup;
+				nextGroup.Cultures.ForEach(c => Cultures.Add(c.Name, c));
+			}
 		}
 
 		private void CreateReligionFile()
 		{
+			Console.WriteLine("Creating religion file...");
 			var data = new PdxSublist();
 			foreach (var rel in ReligiousGroups)
 			{
@@ -63,6 +86,20 @@ namespace Eu4ToVic2
 				
 			}
 			using (var file = File.CreateText(Path.Combine(OUTPUT, @"common\religion.txt")))
+			{
+				data.WriteToFile(file);
+			}
+		}
+		private void CreateCultureFile()
+		{
+			Console.WriteLine("Creating culture file...");
+			var data = new PdxSublist();
+			foreach (var cul in CultureGroups)
+			{
+				data.AddSublist(cul.Key, cul.Value.GetData());
+
+			}
+			using (var file = File.CreateText(Path.Combine(OUTPUT, @"common\cultures.txt")))
 			{
 				data.WriteToFile(file);
 			}
@@ -80,6 +117,7 @@ namespace Eu4ToVic2
 
 		private void CreatePopFiles()
 		{
+			Console.WriteLine("Creating pop files...");
 			var histDir = Directory.CreateDirectory(Path.Combine(OUTPUT, @"history\pops"));
 			var startDir = Directory.CreateDirectory(Path.Combine(OUTPUT, @"history\pops\1836.1.1"));
 			var vanillaFiles = Directory.GetFiles(Path.Combine(VIC2_DIR, @"history\pops\1836.1.1"));
@@ -100,8 +138,11 @@ namespace Eu4ToVic2
 			}
 		}
 
+		
+
 		private void CreateProvinceFiles()
 		{
+			Console.WriteLine("Creating province files...");
 			var histDir = Directory.CreateDirectory(Path.Combine(OUTPUT, @"history\provinces"));
 			foreach (var province in Vic2Provinces)
 			{
@@ -141,9 +182,26 @@ namespace Eu4ToVic2
 			return religion;
 		}
 
+		public string GenerateCulture(string eu4Culture, string vic2Name = null)
+		{
+			if(vic2Name == null)
+			{
+				vic2Name = eu4Culture;
+			}
+			// todo: look into what happens when eu4 culture groups are named differently to vic2 culture groups
+			var group = Eu4Save.CultureGroups.FirstOrDefault(g => g.Value.Cultures.Contains(Eu4Save.Cultures[eu4Culture])).Value;
+			if (!CultureGroups.ContainsKey(group.Name))
+			{
+				CultureGroups[group.Name] = new Vic2CultureGroup(group.Name);
+			}
+			Cultures[vic2Name] = CultureGroups[group.Name].AddCulture(eu4Culture, this, vic2Name);
+			return eu4Culture;
+		}
+
 		private void CreateCountryFiles()
 		{
 			//common
+			Console.WriteLine("Creating country files...");
 			var vanillaCtry = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"common\countries.txt"));
 			var txt = Path.Combine(OUTPUT, @"common\countries.txt");
 			using (var txtFile = File.CreateText(txt))
@@ -265,6 +323,11 @@ namespace Eu4ToVic2
 		public Vic2Country GetCountry(Eu4Country eu4Country)
 		{
 			return Vic2Countries.Find(c => c.Eu4Country == eu4Country);
+		}
+		public Vic2Country GetCountry(string eu4CountryTag)
+		{
+			var vic2Tag = V2Mapper.GetV2Country(eu4CountryTag);
+			return Vic2Countries.Find(c => c.CountryTag == vic2Tag);
 		}
 		public void ValueEffect(PdxSublist effects, Action<Dictionary<string, float>> callback, string key, float value)
 		{

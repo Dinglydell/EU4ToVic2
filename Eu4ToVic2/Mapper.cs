@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Eu4ToVic2
 {
 
-	class Monarchy
+	public class Monarchy
 	{
 		public int MinAbsolutism { get; set; }
 		public int MaxAbsolutism { get; set; }
@@ -34,7 +34,7 @@ namespace Eu4ToVic2
 
 		}
 	}
-	class Mapper
+	public class Mapper
 	{
 		private Dictionary<string, string> Country { get; set; }
 		private Dictionary<string, string> Culture { get; set; }
@@ -107,7 +107,15 @@ namespace Eu4ToVic2
 
 		public string GetV2Culture(string eu4Culture)
 		{
-			return Map(Culture, eu4Culture) ?? eu4Culture;
+			var culture = Map(Culture, eu4Culture);
+			if (culture == null || !World.Cultures.ContainsKey(culture))
+			{
+				culture = World.GenerateCulture(eu4Culture, culture);
+				if (!Culture.ContainsKey(eu4Culture)) {
+					Culture.Add(eu4Culture, culture);
+				}
+			}
+			return culture;
 		}
 
 		public string GetV2Religion(string eu4Religion)
@@ -115,7 +123,8 @@ namespace Eu4ToVic2
 			var religion = Map(Religion, eu4Religion);
 			if(religion == null)
 			{
-				religion = World.GenerateReligion(religion);
+				religion = World.GenerateReligion(eu4Religion);
+				Religion.Add(eu4Religion, religion);
 			}
 			return religion;
 		}

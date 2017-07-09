@@ -93,6 +93,11 @@ namespace Eu4ToVic2
 
 		internal void WriteToFile(StreamWriter file, int indentation = 0)
 		{
+			if(KeyValuePairs.Count != 0 || Sublists.Count != 0 || KeylessSublists.Count != 0)
+			{
+				file.WriteLine();
+			}
+			
 			//using (var file = File.CreateText(path))
 			//{
 
@@ -109,7 +114,7 @@ namespace Eu4ToVic2
 			}
 			foreach (var v in Values)
 			{
-				file.WriteLine(new String('\t', indentation) + v);
+				file.Write(v + " ");
 			}
 			foreach (var sub in Sublists)
 			{
@@ -118,13 +123,13 @@ namespace Eu4ToVic2
 				{
 					newKey = sub.Key;
 				}
-				file.WriteLine($"{new String('\t', indentation)}{newKey} = {{");
+				file.Write($"{new String('\t', indentation)}{newKey} = {{");
 				sub.Value.WriteToFile(file, indentation + 1);
-				file.WriteLine("}");
+				file.WriteLine(new String('\t', indentation) + "}");
 			}
 			foreach (var sub in KeylessSublists)
 			{
-				file.WriteLine(new String('\t', indentation) + "{");
+				file.Write(new String('\t', indentation) + "{");
 				sub.WriteToFile(file, indentation + 1);
 				file.WriteLine(new String('\t', indentation) + "}");
 			}
@@ -171,7 +176,7 @@ namespace Eu4ToVic2
 		{
 			State = ReadState.normal;
 			//TODO: write a much more sophisticated file reader
-			var file = new StreamReader(filePath);
+			var file = new StreamReader(filePath, Encoding.Default);
 			string line;
 			if (firstLine != null)
 			{
@@ -184,14 +189,14 @@ namespace Eu4ToVic2
 			}
 			var rootList = new PdxSublist(null, filePath);
 			var currentList = rootList;
-			//var lineNumber = 0;
+			var lineNumber = 0;
 			while ((line = file.ReadLine()) != null)
 			{
-				//lineNumber++;
-				//if(lineNumber == 10)
-				//{
-				//	Console.WriteLine("Oh");
-				//}
+				lineNumber++;
+				if(lineNumber == 1513567)
+				{
+					Console.WriteLine("Oh");
+				}
 				currentList = RunLine(line, currentList);
 			}
 			if (currentList != rootList)
@@ -224,7 +229,7 @@ namespace Eu4ToVic2
 			{
 				key = ReadKey;
 			}
-			var value = RemoveWhitespace(line.Substring(line.IndexOf('=') + 1));
+			var value = line.Substring(line.IndexOf('=') + 1).Trim();
 
 			if (line.Contains('='))
 			{
@@ -246,7 +251,7 @@ namespace Eu4ToVic2
 				parent = value.Count(c => c == '}');
 				
 				
-				value = RemoveWhitespace(value.Substring(0, value.IndexOf('}')));
+				value = value.Substring(0, value.IndexOf('}')).Trim();
 				
 			}
 
@@ -281,7 +286,7 @@ namespace Eu4ToVic2
 
 
 			}
-			else if (key == null && !value.Contains('"'))
+			else if (key == null)
 			{
 				// awkward single line array of numbers
 				value = line.Substring(line.IndexOf('=') + 1).Trim();
@@ -357,7 +362,36 @@ namespace Eu4ToVic2
 
 		private static void SingleLineArray(string key, string value, PdxSublist currentList)
 		{
-			var numValues = value.Trim().Split(' ');
+			var numValues = new List<string>();
+			var inQuotes = false;
+			var nextVal = new StringBuilder();
+			foreach (var ch in value)
+			{
+				if(ch == '}')
+				{
+					break;
+				}
+				if (!inQuotes && char.IsWhiteSpace(ch))
+				{
+					if (nextVal.Length > 0)
+					{
+						numValues.Add(nextVal.ToString());
+					}
+					nextVal = new StringBuilder();
+					continue;
+				}
+				if(ch == '"')
+				{
+					inQuotes = !inQuotes;
+					continue;
+				}
+
+				nextVal.Append(ch);
+			}
+			if (nextVal.Length > 0)
+			{
+				numValues.Add(nextVal.ToString());
+			}
 			foreach (var val in numValues)
 			{
 				currentList.AddString(null, val);

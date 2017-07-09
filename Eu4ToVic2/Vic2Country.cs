@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Eu4ToVic2
 {
-	internal class Vic2Country
+	public class Vic2Country
 	{
 		public Eu4Country Eu4Country { get; set; }
 		public string CountryTag { get; set; }
@@ -45,6 +45,8 @@ namespace Eu4ToVic2
 		public List<string> Techonologies { get; set; }
 		public DateTime LastElection { get; private set; }
 
+		public bool FemaleLeaders { get; set; }
+
 		public Vic2Country(Vic2World vic2World, Eu4Country eu4Country)
 		{
 			CountryTag = vic2World.V2Mapper.GetV2Country(eu4Country.CountryTag);
@@ -78,6 +80,11 @@ namespace Eu4ToVic2
 			}
 		}
 
+		public Vic2Country(string tag)
+		{
+			CountryTag = tag;
+		}
+
 		public PdxSublist GetHistoryCountryFile()
 		{
 			var data = new PdxSublist(null);
@@ -107,6 +114,14 @@ namespace Eu4ToVic2
 			data.AddDate("last_election", LastElection);
 			data.AddSublist("upper_house", UpperHouse.GetData(data));
 			data.AddString("schools", Enum.GetName(typeof(TechSchool), TechSchools.TechSchool));
+
+			if (FemaleLeaders)
+			{
+				var entry = new PdxSublist();
+				entry.AddString("decision", "enact_female_suffrage");
+
+				data.AddSublist("1836.1.1", entry);
+			}
 			return data;
 		}
 
@@ -146,6 +161,7 @@ namespace Eu4ToVic2
 
 			Techonologies = new List<string>();
 			var techInvestment = new Dictionary<string, float>();
+			var femaleLeaders = 0f;
 			foreach (var techCategory in vic2World.TechOrder.Keys)
 			{
 				techInvestment.Add(techCategory, 0);
@@ -161,11 +177,26 @@ namespace Eu4ToVic2
 				CalcConsciousness(effects);
 				CalcMilitancy(effects);
 				CalcTechnology(effects, techInvestment);
+				femaleLeaders = CalcFemaleLeaders(effects, femaleLeaders);
 			});
 			FinaliseReforms(reforms);
 			FinalisePoliticalParties(vic2World, baseModifier);
 			FinaliseTechnology(techInvestment, vic2World.TechOrder);
+			FinaliseFemaleLeaders(femaleLeaders);
+		}
 
+		private void FinaliseFemaleLeaders(float femaleLeaders)
+		{
+			FemaleLeaders = femaleLeaders >= 1;
+		}
+
+		private float CalcFemaleLeaders(Dictionary<string, float> effects, float femaleLeaders)
+		{
+			if (effects.ContainsKey("female_leaders"))
+			{
+				femaleLeaders += effects["female_leaders"];
+			}
+			return femaleLeaders;
 		}
 
 		private void FinaliseTechnology(Dictionary<string, float> techInvestment, Dictionary<string, List<string>> techOrder)

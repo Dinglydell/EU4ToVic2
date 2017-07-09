@@ -20,8 +20,23 @@ namespace Eu4ToVic2
 		}
 
 
-		public Colour(List<string> rgb) : this(byte.Parse(rgb[0]), byte.Parse(rgb[1]), byte.Parse(rgb[2]))
+		public Colour(List<string> rgb) 
 		{
+			
+			byte r;
+			byte g;
+			byte b;
+			if(byte.TryParse(rgb[0], out r) && byte.TryParse(rgb[1], out g) && byte.TryParse(rgb[2], out b))
+			{
+				Red = r;
+				Green = g;
+				Blue = b;
+			} else
+			{
+				Red = (byte)(float.Parse(rgb[0]) * 255);
+				Green = (byte)(float.Parse(rgb[1]) * 255);
+				Blue = (byte)(float.Parse(rgb[2]) * 255);
+			}
 		}
 
 		public Colour(List<string> rgb, byte multiplier): this((byte)(multiplier * float.Parse(rgb[0])), (byte)(multiplier * float.Parse(rgb[1])), (byte)(multiplier * float.Parse(rgb[2])))

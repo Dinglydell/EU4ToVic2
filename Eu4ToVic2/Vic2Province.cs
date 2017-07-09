@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Eu4ToVic2
 {
-	class Vic2Province
+	public class Vic2Province
 	{
 		public List<Eu4Province> Eu4Provinces;
 
@@ -43,7 +43,7 @@ namespace Eu4ToVic2
 			ProvID = provID;
 			TradeGoods = defaultProvince.KeyValuePairs["trade_goods"];
 			LifeRating = int.Parse(defaultProvince.KeyValuePairs["life_rating"]);
-			Pops = new PopPool(eu4Provinces);
+			Pops = new PopPool(vic2World);
 			if (eu4Provinces.Count > 0)
 			{
 				// most common owner
@@ -167,9 +167,10 @@ namespace Eu4ToVic2
 
 	public class PopPool
 	{
+		public Vic2World World { get; set; }
 		private Dictionary<string, Pop> pops;
-		private Dictionary<Eu4Province, ValueSet<string>> culture;
-		private Dictionary<Eu4Province, ValueSet<string>> religion;
+		//private Dictionary<Eu4Province, ValueSet<string>> culture;
+		//private Dictionary<Eu4Province, ValueSet<string>> religion;
 		public List<Pop> Pops
 		{
 			get
@@ -177,8 +178,9 @@ namespace Eu4ToVic2
 				return pops.Values.ToList();
 			}
 		}
-		public PopPool(List<Eu4Province> eu4Provinces)
+		public PopPool(Vic2World world)
 		{
+			World = world;
 			pops = new Dictionary<string, Pop>();
 			//culture = new Dictionary<Eu4Province, ValueSet<string>>();
 			//religion = new Dictionary<Eu4Province, ValueSet<string>>();
@@ -232,16 +234,16 @@ namespace Eu4ToVic2
 		public void AddPop(Eu4Province fromProvince, PopType type, int quantity)
 		{
 			var history = new Dictionary<DateTime, DemographicEvent>();
-			fromProvince.CulturalHistory.ToList().ForEach(ce => history.Add(ce.Key, new DemographicEvent().SetCulture(ce.Value)));
+			fromProvince.CulturalHistory.ToList().ForEach(ce => history.Add(ce.Key, new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(ce.Value))));
 			fromProvince.ReligiousHistory.ToList().ForEach(re =>
 			{
 				if (history.ContainsKey(re.Key))
 				{
-					history[re.Key].SetReligion(re.Value);
+					history[re.Key].SetReligion(World.V2Mapper.GetV2Religion(re.Value));
 				}
 				else
 				{
-					history[re.Key] = new DemographicEvent().SetReligion(re.Value);
+					history[re.Key] = new DemographicEvent().SetReligion(World.V2Mapper.GetV2Religion(re.Value));
 				}
 			});
 			if (history.Count == 0)
@@ -253,18 +255,21 @@ namespace Eu4ToVic2
 			var popsList = new List<Pop>();
 			popsList.Add(new Pop(type, quantity, orderedHistory.First().Value.Culture, orderedHistory.First().Value.Religion));
 			KeyValuePair<DateTime, DemographicEvent> lastEntry = orderedHistory.First();
-			bool firstTime = true;
+			if(fromProvince.ProvinceID == 233)
+			{
+				Console.WriteLine("Cornwall!");
+			}
+			//bool firstTime = true;
 			var majorityReligion = lastEntry.Value.Religion;
+			var majorityCulture = lastEntry.Value.Culture;
 			foreach (var entry in orderedHistory)
 			{
-				if (firstTime)
-				{
-					firstTime = false;
-					var since = lastEntry.Key - entry.Key;
-					// 100 years -> +50%
-					//set[lastEntry.Value.Value] += (since.Days * 1.369863013698630136986301369863e-5);
-					MergePops(popsList, SplitPops((int)(since.Days * 1.369863013698630136986301369863e-5), popsList, c => lastEntry.Value.Culture, r => lastEntry.Value.Religion));
-				}
+
+					var since = entry.Key - lastEntry.Key;
+					// 200 years -> +50%
+					//set[lastEntry.Value.Value] += (since.Days * 1.369863013698630136986301369863e-5); quantity *
+					MergePops(popsList, SplitPops((int)(quantity * Math.Min(1, since.Days * 6.8493150684931506849315068493151e-6)), popsList, c => majorityCulture, r => majorityReligion));
+
 
 				if (entry.Value.Religion == null)
 				{
@@ -276,8 +281,9 @@ namespace Eu4ToVic2
 					}
 					else
 					{
+						majorityCulture = entry.Value.Culture;
 						// flip 50% of population to new culture. only true faith will convert culture as in eu4
-						MergePops(popsList, SplitPops(1 + quantity / 2, popsList.Where(p => p.Religion == majorityReligion).ToList(), c => entry.Value.Religion, r => r));
+						MergePops(popsList, SplitPops(1 + quantity / 2, popsList.Where(p => p.Religion == majorityReligion).ToList(), c => entry.Value.Culture, r => r));
 					}
 				}
 				else
@@ -290,16 +296,16 @@ namespace Eu4ToVic2
 					}
 					else
 					{
+						majorityCulture = entry.Value.Culture;
 						// flip 50% to new religion + culture
-						MergePops(popsList, SplitPops(1 + quantity / 2, popsList, c => entry.Value.Religion, r => entry.Value.Religion));
+						MergePops(popsList, SplitPops(1 + quantity / 2, popsList, c => entry.Value.Culture, r => entry.Value.Religion));
 					}
 				}
 
 			}
-			var finalSince = lastEntry.Key - new DateTime(1836, 1, 1);
-			// 100 years -> +50%
-			//set[lastEntry.Value.Value] += (since.Days * 1.369863013698630136986301369863e-5);
-			MergePops(popsList, SplitPops((int)(finalSince.Days * 1.369863013698630136986301369863e-5), popsList, c => lastEntry.Value.Culture, r => lastEntry.Value.Religion));
+			var finalSince = new DateTime(1836, 1, 1) - lastEntry.Key ;
+			// 200 years -> +50%
+			MergePops(popsList, SplitPops((int)(quantity * Math.Min(1, finalSince.Days * 6.8493150684931506849315068493151e-6)), popsList, c => majorityCulture, r => majorityReligion));
 			foreach (var pop in popsList)
 			{
 				AddPop(pop);
@@ -517,7 +523,7 @@ namespace Eu4ToVic2
 		public Pop Split(int quantity, string culture, string religion)
 		{
 			var newPop = new Pop(Type, Math.Min(quantity, Size), culture, religion);
-			quantity = Math.Max(0, quantity - Size);
+			Size = Math.Max(0,  Size - quantity);
 			return newPop;
 		}
 

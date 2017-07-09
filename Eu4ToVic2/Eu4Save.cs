@@ -22,6 +22,8 @@ namespace Eu4ToVic2
 
 		public Dictionary<string, Eu4Country> Countries { get; set; }
 		public Dictionary<int, Eu4Province> Provinces { get; private set; }
+		public Dictionary<string, Eu4Culture> Cultures { get; private set; }
+		public Dictionary<string, Eu4CultureGroup> CultureGroups { get; private set; }
 
 		public Eu4Save(string filePath, string modFilePath)
 		{
@@ -35,7 +37,34 @@ namespace Eu4ToVic2
 			LoadProvinceData();
 
 			LoadReligionData();
+			LoadCultureData();
 			Console.WriteLine("EU4 data loaded.");
+		}
+
+		private void LoadCultureData()
+		{
+			Cultures = new Dictionary<string, Eu4Culture>();
+			CultureGroups = new Dictionary<string, Eu4CultureGroup>();
+			var relFiles = GetFilesFor(@"common\Cultures");
+			foreach (var relFile in relFiles)
+			{
+				var cultures = PdxSublist.ReadFile(relFile);
+				foreach (var culGroup in cultures.Sublists)
+				{
+					if (!CultureGroups.ContainsKey(culGroup.Key))
+					{
+						CultureGroups[culGroup.Key] = new Eu4CultureGroup(culGroup.Key);
+					}
+					foreach (var cul in culGroup.Value.Sublists)
+					{
+						if (!Cultures.ContainsKey(cul.Key) && cul.Key != "male_names")
+						{
+							Cultures[cul.Key] = CultureGroups[culGroup.Key].AddCulture(cul.Value);
+						}
+					}
+
+				}
+			}
 		}
 
 		private void LoadReligionData()
@@ -133,7 +162,6 @@ namespace Eu4ToVic2
 			var modPath = Path.Combine(ModPath, path);
 			var gameFiles = Directory.GetFiles(GAME_PATH + path);
 			var modFileNames = Directory.GetFiles(modPath).Select(Path.GetFileName);
-
 			var files = new List<string>();
 			foreach (var name in gameFiles)
 			{
@@ -143,6 +171,14 @@ namespace Eu4ToVic2
 				} else
 				{
 					files.Add(name);
+				}
+			}
+			foreach (var name in modFileNames)
+			{
+				var modFilePath = Path.Combine(modPath, Path.GetFileName(name));
+				if (!files.Contains(modFilePath))
+				{
+					files.Add(modFilePath);
 				}
 			}
 			return files;

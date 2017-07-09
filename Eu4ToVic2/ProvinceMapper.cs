@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Eu4ToVic2
 {
-	class ProvinceMapper
+	public class ProvinceMapper
 	{
 		//public static ProvinceMapper instance;
 		public PdxSublist Mappings { get; set; }

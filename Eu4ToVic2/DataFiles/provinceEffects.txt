@@ -84,6 +84,8 @@ building = {
 	}
 	barracks = {
 		relative_soliders = 0.01
+		# todo
+		#multiply_soliders = 1.5
 	}
 	courthouse = {
 		relative_bureaucrats = 0.01

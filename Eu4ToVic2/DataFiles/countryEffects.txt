@@ -56,6 +56,9 @@
 # <tech category> = <value>
 # increases amount of tech in a category
 # army_tech, navy_tech, commerce_tech, culture_tech, industry_tech
+#
+# female_leaders = 1
+# if the total value is >= 1 then list of female names is added to the culture names pool if this nation is the culture's primary nation. country will also start with women's suffrage
 
 ideas = {
 	aristocracy_ideas = {
@@ -63,7 +66,7 @@ ideas = {
 		NV_liberty = -1
 		NV_equality = -1
 		UH_reactionary = 1
-		war_policy = 0.5
+		war_policy = 0.25
 		#vote_franschise = -1
 		#upper_house_composition = -1
 		army_tech_school = 1
@@ -136,7 +139,7 @@ ideas = {
 	}
 	
 	offensive_ideas = {
-		war_policy = 1
+		war_policy = 0.5
 		UH_reactionary = 1
 		NV_liberty = -1
 		
@@ -146,7 +149,7 @@ ideas = {
 	}
 	
 	defensive_ideas = {
-		war_policy = 1
+		war_policy = 0.5
 		
 		army_tech_school = 0.5
 		
@@ -190,7 +193,7 @@ ideas = {
 	
 	
 	maritime_ideas = {
-		war_policy = 0.5
+		war_policy = 0.25
 		
 		naval_tech_school = 1
 		
@@ -199,7 +202,7 @@ ideas = {
 	
 	
 	quality_ideas = {
-		war_policy = 1
+		war_policy = 0.5
 		
 		army_tech_school = 0.5
 		naval_tech_school = 0.5
@@ -213,7 +216,7 @@ ideas = {
 		NV_equality = 1
 		UH_reactionary = 0.5
 		NV_liberty = -0.5
-		war_policy = 1
+		war_policy = 0.5
 		
 		army_tech_school = 0.5
 	}
@@ -257,7 +260,7 @@ ideas = {
 	}
 	
 	naval_ideas = {
-		war_policy = 0.5
+		war_policy = 0.25
 		UH_reactionary = 0.5
 		NV_liberty = -0.5
 		
@@ -310,6 +313,7 @@ country_flags = {
 
 religion = {
 	cathar = {
+		female_leaders = 1
 		war_policy = -1
 	}
 	sunni = {
