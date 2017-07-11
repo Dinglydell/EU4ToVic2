@@ -1,0 +1,26 @@
+government = {
+	presidential_dictatorship = %NOUN%
+	bourgeois_dictatorship = %NOUN%
+	absolute_monarchy = "The %ADJ% Empire"
+	prussian_constitutionalism = "The %ADJ% Empire"
+	hms_government = %NOUN%
+	democracy = "Republic of %NOUN%"
+	proletarian_dictatorship = "People's Republic of %NOUN%"
+	fascist_dictatorship = "The %ADJ% Empire"
+}
+
+party = {
+	fascist = "National Socialist Worker's Party"
+	communist = "People's Revolutionary Party"
+	conservative = "The Conservative Party"
+	liberal = "The Liberal Party"
+	socialist = "The Labour Party"
+	reactionary = "The Old Guard"
+	anarcho_liberal = "The Liberation Party"
+}
+
+# determines how dynamically created cultural nations are named
+culture_nation = {
+	noun = "%CULTURE% Nation"
+	adj = "%CULTURE%"
+}

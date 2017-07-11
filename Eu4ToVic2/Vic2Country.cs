@@ -6,12 +6,23 @@ namespace Eu4ToVic2
 {
 	public class Vic2Country
 	{
+		//public static readonly Dictionary<string, string> governments = new Dictionary<string, string>(){
+		//	["_presidential_dictatorship"] = "{0}",
+		//	["_bourgeois_dictatorship"] = "{1}"
+		//};
+		/// <summary>
+		/// Determines whether country exists in vanilla vic2
+		/// </summary>
+		public bool IsVic2Country { get; set; }
 		public Eu4Country Eu4Country { get; set; }
 		public string CountryTag { get; set; }
 		public Colour MapColour { get; set; }
 		public string GraphicalCulture { get; set; }
-
+		public Dictionary<string, string> Localisation { get; set; }
 		public int Capital { get; set; }
+
+		public string DisplayNoun { get; set; }
+		public string DisplayAdj { get; set; }
 
 		public string PrimaryCulture { get; set; }
 
@@ -42,17 +53,21 @@ namespace Eu4ToVic2
 
 		public List<PoliticalParty> PoliticalParties { get; set; }
 
-		public List<string> Techonologies { get; set; }
+		public List<string> Technologies { get; set; }
 		public DateTime LastElection { get; private set; }
 
 		public bool FemaleLeaders { get; set; }
+		public IdeologyModifier BasePartyModifier { get; private set; }
 
 		public Vic2Country(Vic2World vic2World, Eu4Country eu4Country)
 		{
 			CountryTag = vic2World.V2Mapper.GetV2Country(eu4Country.CountryTag);
+			IsVic2Country = !vic2World.ExistingCountries.Add(CountryTag);
 			Eu4Country = eu4Country;
 			MapColour = eu4Country.MapColour;
 			GraphicalCulture = "Generic";
+			DisplayNoun = eu4Country.DisplayNoun;
+			DisplayAdj = eu4Country.DisplayAdj;
 
 			PrimaryCulture = vic2World.V2Mapper.GetV2Culture(eu4Country.PrimaryCulture);
 			AcceptedCultures = eu4Country.AcceptedCultures.ConvertAll(c => vic2World.V2Mapper.GetV2Culture(c));
@@ -73,16 +88,83 @@ namespace Eu4ToVic2
 			LastElection = eu4Country.LastElection;
 
 			CalcEffects(vic2World);
-			RulingParty = PoliticalParties.First(p => p.Ideology == UpperHouse.GetMode());
+			// TODO: make this less of a hack
+			if(Government == "absolute_monarchy" && Reforms.vote_franschise != vote_franschise.none_voting)
+			{
+				Government = "prussian_constitutionalism";
+			}
+			//RulingParty = PoliticalParties.First(p => p.Ideology == UpperHouse.GetMode());
 			if (CountryTag == "ENG")
 			{
 				Console.WriteLine("GBR!");
 			}
 		}
 
-		public Vic2Country(string tag)
+		public void AddLocalisation(Dictionary<string, string> localisation, PdxSublist localeHelper)
+		{
+			if (!IsVic2Country)
+			{
+				localisation.Add(CountryTag, DisplayNoun);
+				localisation.Add($"{CountryTag}_ADJ", DisplayAdj);
+				foreach (var gov in localeHelper.Sublists["government"].KeyValuePairs)
+				{
+					// eg. "People's Republic of %NOUN%" -> "People's Republic of France"
+					localisation.Add($"{CountryTag}_{gov.Key}", gov.Value.Replace("%NOUN%", DisplayNoun).Replace("%ADJ%", DisplayAdj).Replace("\"", string.Empty));
+				}
+
+				foreach (var party in PoliticalParties)
+				{
+					localisation.Add(party.Name, localeHelper.Sublists["party"].KeyValuePairs[Enum.GetName(typeof(Ideology), party.Ideology)].Replace("\"", string.Empty));
+				}
+			}
+		}
+
+		public Vic2Country(Vic2World world, string tag, Vic2CultureGroup cultureGroup): this(world, tag, world.Vic2Countries.Where(c => cultureGroup.Cultures.Find(cul => c.PrimaryCulture == cul.Name) != null), cultureGroup.Cultures.First())
+		{
+
+		}
+
+		public Vic2Country(Vic2World world, string tag, Vic2Culture culture) : this(world, tag, world.Vic2Countries.Where(c => c.PrimaryCulture == culture.Name), culture)
+		{
+		}
+		private Vic2Country(Vic2World world, string tag, IEnumerable<Vic2Country> cultureNations, Vic2Culture primaryCulture)
 		{
 			CountryTag = tag;
+			IsVic2Country = !world.ExistingCountries.Add(tag);
+			if (!IsVic2Country)
+			{
+				world.Vic2Countries.Add(this);
+				//setup
+				Capital = 1;
+
+				PrimaryCulture = primaryCulture.Name;
+				DisplayNoun = world.LocalisationHelper.Sublists["culture_nation"].KeyValuePairs["noun"].Replace("%CULTURE%", primaryCulture.Name);
+                DisplayAdj = world.LocalisationHelper.Sublists["culture_nation"].KeyValuePairs["adj"].Replace("%CULTURE%", primaryCulture.Name);
+
+				AcceptedCultures = new List<string>();
+				PoliticalParties = new List<PoliticalParty>();
+				BasePartyModifier = new IdeologyModifier();
+				foreach (var nation in cultureNations)
+				{
+					BasePartyModifier += nation.BasePartyModifier;
+				}
+				FinalisePoliticalParties(world, BasePartyModifier);
+
+				
+
+				MapColour = primaryCulture.Colour;
+				// the most common religion out of nations with that culture
+				//Religion = cultureNations.GroupBy(c => c.Religion).Select(c => new {
+				//	Name = c.Key, Count = c.Count()
+				//}).OrderByDescending(x => x.Count).Select(x => x.Name).First();
+				//
+				////most common government type
+				//Government = cultureNations.GroupBy(c => c.Government).Select(c => new {
+				//	Name = c.Key,
+				//	Count = c.Count()
+				//}).OrderByDescending(x => x.Count).Select(x => x.Name).First();
+
+			}
 		}
 
 		public PdxSublist GetHistoryCountryFile()
@@ -94,26 +176,38 @@ namespace Eu4ToVic2
 			data.AddString("religion", Religion);
 			data.AddString("government", Government);
 			data.AddString("plurality", Plurality.ToString());
-
-			data.AddString("nationalvalue", NationalValues.Value);
+			if (NationalValues != null)
+			{
+				data.AddString("nationalvalue", NationalValues.Value);
+			}
 			data.AddString("literacy", Literacy.ToString());
 			data.AddString("civilized", IsCivilised ? "yes" : "no");
 
 			data.AddString("prestige", Prestige.ToString());
-
-			Reforms.AddData(data);
-
-			Techonologies.ForEach(t => data.AddString(t, "1"));
-
+			if (Reforms != null)
+			{
+				Reforms.AddData(data);
+			}
+			if (Technologies != null)
+			{
+				Technologies.ForEach(t => data.AddString(t, "1"));
+			}
 			data.AddString("consciousness", Consciousness.ToString());
 			// todo
 			data.AddString("nonstate_consciousness", (Consciousness / 3).ToString());
-
-			data.AddString("ruling_party", RulingParty.Name);
-
+			if (RulingParty != null)
+			{
+				data.AddString("ruling_party", RulingParty.Name);
+			}
 			data.AddDate("last_election", LastElection);
-			data.AddSublist("upper_house", UpperHouse.GetData(data));
-			data.AddString("schools", Enum.GetName(typeof(TechSchool), TechSchools.TechSchool));
+			if (UpperHouse != null)
+			{
+				data.AddSublist("upper_house", UpperHouse.GetData(data));
+			}
+			if (TechSchools != null)
+			{
+				data.AddString("schools", Enum.GetName(typeof(TechSchool), TechSchools.TechSchool));
+			}
 
 			if (FemaleLeaders)
 			{
@@ -157,9 +251,9 @@ namespace Eu4ToVic2
 			UpperHouse = new UHouse();
 
 			PoliticalParties = new List<PoliticalParty>();
-			var baseModifier = new IdeologyModifier();
+			BasePartyModifier = new IdeologyModifier();
 
-			Techonologies = new List<string>();
+			Technologies = new List<string>();
 			var techInvestment = new Dictionary<string, float>();
 			var femaleLeaders = 0f;
 			foreach (var techCategory in vic2World.TechOrder.Keys)
@@ -172,7 +266,7 @@ namespace Eu4ToVic2
 				CalcTechSchool(effects);
 				CalcReforms(effects, reforms);
 				CalcUpperHouse(effects);
-				CalcPoliticalParties(effects, baseModifier);
+				CalcPoliticalParties(effects, BasePartyModifier);
 				CalcLiteracy(effects);
 				CalcConsciousness(effects);
 				CalcMilitancy(effects);
@@ -180,7 +274,7 @@ namespace Eu4ToVic2
 				femaleLeaders = CalcFemaleLeaders(effects, femaleLeaders);
 			});
 			FinaliseReforms(reforms);
-			FinalisePoliticalParties(vic2World, baseModifier);
+			FinalisePoliticalParties(vic2World, BasePartyModifier);
 			FinaliseTechnology(techInvestment, vic2World.TechOrder);
 			FinaliseFemaleLeaders(femaleLeaders);
 		}
@@ -203,13 +297,13 @@ namespace Eu4ToVic2
 		{
 			foreach (var tech in techInvestment)
 			{
-				Techonologies.AddRange(techOrder[tech.Key].GetRange(0, Math.Max(0, (int)tech.Value)));
+				Technologies.AddRange(techOrder[tech.Key].GetRange(0, Math.Max(0, (int)tech.Value)));
 			}
 		}
 
 		private void CalcTechnology(Dictionary<string, float> effects, Dictionary<string, float> techInvestment)
 		{
-			foreach(var tech in techInvestment.Keys.ToList())
+			foreach (var tech in techInvestment.Keys.ToList())
 			{
 				if (effects.ContainsKey(tech))
 				{
@@ -283,9 +377,9 @@ namespace Eu4ToVic2
 					polParty.SetIssue(pol.Key, pol.Value);
 				}
 				PoliticalParties.Add(polParty);
-				if (ideology.Key == UpperHouse.GetMode())
+				if (ideology.Key == UpperHouse?.GetMode())
 				{
-
+					RulingParty = polParty;
 				}
 			}
 		}
@@ -450,7 +544,7 @@ namespace Eu4ToVic2
 			vic2World.ValueEffect(effects, callback, "dip_tech", country.DipTech);
 			vic2World.ValueEffect(effects, callback, "mil_tech", country.MilTech);
 		}
-		
+
 	}
 
 	public enum TechSchool
@@ -501,7 +595,7 @@ namespace Eu4ToVic2
 		public religious_policy religious_policy { get; set; }
 		public war_policy war_policy { get; set; }
 		public citizenship_policy citizenship_policy { get; set; }
-		public string Name { get;  }
+		public string Name { get; }
 		public DateTime StartDate { get; set; }
 		public DateTime EndDate { get; set; }
 
@@ -762,7 +856,7 @@ namespace Eu4ToVic2
 			foreach (var reform in typeof(Reforms).GetProperties())
 			{
 				data.AddString(reform.Name, Enum.GetName(reform.PropertyType, reform.GetValue(this)));
-				
+
 			}
 		}
 	}
@@ -774,21 +868,26 @@ namespace Eu4ToVic2
 		public float Order { get; set; }
 		public float Liberty { get; set; }
 		public float Equality { get; set; }
-		public string Value { get
+		public string Value
+		{
+			get
 			{
-				if(Order > Liberty)
+				if (Order > Liberty)
 				{
-					if(Order >= Equality)
+					if (Order >= Equality)
 					{
 						return "nv_order";
-					} else
+					}
+					else
 					{
 						return "nv_equality";
 					}
-				} else if(Equality > Liberty)
+				}
+				else if (Equality > Liberty)
 				{
 					return "nv_equality";
-				} else
+				}
+				else
 				{
 					return "nv_liberty";
 				}

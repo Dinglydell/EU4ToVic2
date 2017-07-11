@@ -49,12 +49,40 @@ namespace Eu4ToVic2
 				// most common owner
 				Owner = vic2World.GetCountry(eu4Provinces.GroupBy(p => p.Owner).OrderByDescending(grp => grp.Count())
 		  .Select(grp => grp.Key).First());
+				if (Owner?.Eu4Country?.IsColonialNation ?? false)
+				{
+					Owner = vic2World.GetCountry(Owner.Eu4Country.Overlord);
+				}
 				// all countries that have cores in any of the eu4 counterparts gets cores here
-				Cores = eu4Provinces.SelectMany(p => p.Cores).Select(c => vic2World.GetCountry(c)).ToList();
-
+				//Cores = eu4Provinces.SelectMany(p => p.Cores).Select(c => vic2World.GetCountry(c)).ToList();
+				Cores = new List<Vic2Country>();
 				FortLevel = eu4Provinces.Any(p => p.FortLevel > 6) ? 1 : 0;
-				
+
 				CalcEffects(vic2World, siblingProvinces, eu4Provinces);
+
+				var largeCultures = Pops.GetLargeCultures(0.4f);
+				// TODO: dynamically create countries that don't have a primary nation in vic2
+				foreach (var cul in largeCultures)
+				{
+					vic2World.CultureNations.GetAllMatchingKVPs(cul, tag =>
+					{
+						Cores.Add(vic2World.Vic2Countries.Find(c => c.CountryTag == tag) ?? new Vic2Country(vic2World, tag, vic2World.Cultures[cul]));
+					});
+					if (vic2World.Cultures[cul].PrimaryNation == null)
+					{
+						if(vic2World.Cultures[cul].Group.Union == null)
+						{
+							
+
+						}
+					} else { 
+						Cores.Add(vic2World.Cultures[cul].PrimaryNation);
+					}
+					if (vic2World.Cultures[cul].Group.Union != null)
+					{
+						Cores.Add(vic2World.Cultures[cul].Group.Union);
+					}
+				}
 			}
 		}
 
@@ -70,13 +98,13 @@ namespace Eu4ToVic2
 			{
 				foreach (var core in Cores)
 				{
-					file.AddString("core", core.CountryTag);
+					file.AddString("add_core", core.CountryTag);
 				}
 			}
 			file.AddString("trade_goods", TradeGoods);
 			file.AddString("fort", FortLevel.ToString());
 			return file;
-		} 
+		}
 
 		public PdxSublist GetPopData()
 		{
@@ -153,12 +181,23 @@ namespace Eu4ToVic2
 					}
 				}
 
+				// buildings
+				if (vic2World.ProvinceEffects.Sublists.ContainsKey("buildings"))
+				{
+					foreach (var build in prov.Buildings)
+					{
+						if (vic2World.ProvinceEffects.Sublists["buildings"].Sublists.ContainsKey(build))
+						{
+							newCallback(vic2World.ProvinceEffects.Sublists["buildings"].Sublists[build].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value) / eu4Provinces.Count));
+						}
+					}
 
+				}
 
 			}
 
 			// from owner country 
-			if (Owner != null && vic2World.ProvinceEffects.Sublists.ContainsKey("owner") )
+			if (Owner != null && vic2World.ProvinceEffects.Sublists.ContainsKey("owner"))
 			{
 				Vic2Country.IterateCountryEffects(vic2World, Owner.Eu4Country, vic2World.ProvinceEffects.Sublists["owner"], (effects) => { callback(effects, null); });
 			}
@@ -190,6 +229,26 @@ namespace Eu4ToVic2
 			//	religion[prov] = HistoryEffect(prov.ReligiousHistory);
 			//}
 		}
+		/// <summary>
+		/// Gets a list of all cultures in the pool that have at least the threshhold as a proportion of the total population
+		/// </summary>
+		/// <param name="threshhold"></param>
+		/// <returns></returns>
+		public List<string> GetLargeCultures(float threshhold)
+		{
+			var cultures = new Dictionary<string, int>();
+			foreach (var pop in pops)
+			{
+				if (!cultures.ContainsKey(pop.Value.Culture))
+				{
+					cultures[pop.Value.Culture] = 0;
+				}
+				cultures[pop.Value.Culture] += pop.Value.Size;
+			}
+			var total = Pops.Sum(p => p.Size);
+			return cultures.Where(c => c.Value / (float)total >= threshhold).Select(c => c.Key).ToList();
+		}
+
 		// calculate what proportions of the population should be what demographic based on the history of the province
 		private ValueSet<string> HistoryEffect(Dictionary<DateTime, string> history)
 		{
@@ -248,27 +307,27 @@ namespace Eu4ToVic2
 			});
 			if (history.Count == 0)
 			{
-				history[new DateTime(1444, 11, 11)] = new DemographicEvent().SetCulture(fromProvince.Culture).SetReligion(fromProvince.Religion); ;
+				history[new DateTime(1444, 11, 11)] = new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(fromProvince.Culture)).SetReligion(World.V2Mapper.GetV2Religion(fromProvince.Religion));
 			}
 			var orderedHistory = history.OrderBy(he => he.Key.Ticks);
-			
+
 			var popsList = new List<Pop>();
-			popsList.Add(new Pop(type, quantity, orderedHistory.First().Value.Culture, orderedHistory.First().Value.Religion));
+			popsList.Add(new Pop(type, quantity, orderedHistory.First().Value.Culture ?? fromProvince.Culture, orderedHistory.First().Value.Religion ?? fromProvince.Religion));
 			KeyValuePair<DateTime, DemographicEvent> lastEntry = orderedHistory.First();
-			if(fromProvince.ProvinceID == 233)
-			{
-				Console.WriteLine("Cornwall!");
-			}
+			//if (fromProvince.ProvinceID == 233)
+			//{
+			//	Console.WriteLine("Cornwall!");
+			//}
 			//bool firstTime = true;
-			var majorityReligion = lastEntry.Value.Religion;
-			var majorityCulture = lastEntry.Value.Culture;
+			var majorityReligion = lastEntry.Value.Religion ?? fromProvince.Religion;
+			var majorityCulture = lastEntry.Value.Culture ?? fromProvince.Culture;
 			foreach (var entry in orderedHistory)
 			{
 
-					var since = entry.Key - lastEntry.Key;
-					// 200 years -> +50%
-					//set[lastEntry.Value.Value] += (since.Days * 1.369863013698630136986301369863e-5); quantity *
-					MergePops(popsList, SplitPops((int)(quantity * Math.Min(1, since.Days * 6.8493150684931506849315068493151e-6)), popsList, c => majorityCulture, r => majorityReligion));
+				var since = entry.Key - lastEntry.Key;
+				// 200 years -> +50%
+				//set[lastEntry.Value.Value] += (since.Days * 1.369863013698630136986301369863e-5); quantity *
+				MergePops(popsList, SplitPops((int)(quantity * Math.Min(1, since.Days * 6.8493150684931506849315068493151e-6)), popsList, c => majorityCulture, r => majorityReligion));
 
 
 				if (entry.Value.Religion == null)
@@ -303,7 +362,7 @@ namespace Eu4ToVic2
 				}
 
 			}
-			var finalSince = new DateTime(1836, 1, 1) - lastEntry.Key ;
+			var finalSince = new DateTime(1836, 1, 1) - lastEntry.Key;
 			// 200 years -> +50%
 			MergePops(popsList, SplitPops((int)(quantity * Math.Min(1, finalSince.Days * 6.8493150684931506849315068493151e-6)), popsList, c => majorityCulture, r => majorityReligion));
 			foreach (var pop in popsList)
@@ -321,12 +380,13 @@ namespace Eu4ToVic2
 			foreach (var pop in listB)
 			{
 				var aPop = listA.Find(p => p.EquivalentTo(pop));
-				if(aPop == null)
+				if (aPop == null)
 				{
 					listA.Add(pop);
-				} else
+				}
+				else
 				{
-					aPop.Size += pop.Size; 
+					aPop.Size += pop.Size;
 				}
 			}
 		}
@@ -491,7 +551,9 @@ namespace Eu4ToVic2
 	{
 
 		public PopType Type { get; set; }
-		public string Job { get
+		public string Job
+		{
+			get
 			{
 				return Enum.GetName(typeof(PopType), Type);
 			}
@@ -523,7 +585,7 @@ namespace Eu4ToVic2
 		public Pop Split(int quantity, string culture, string religion)
 		{
 			var newPop = new Pop(Type, Math.Min(quantity, Size), culture, religion);
-			Size = Math.Max(0,  Size - quantity);
+			Size = Math.Max(0, Size - quantity);
 			return newPop;
 		}
 
@@ -531,6 +593,8 @@ namespace Eu4ToVic2
 		{
 			return pop.Type == Type && pop.Religion == Religion && pop.Culture == Culture;
 		}
+
+
 	}
 
 	public class Vic2State

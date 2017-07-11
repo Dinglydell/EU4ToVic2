@@ -19,33 +19,126 @@ namespace Eu4ToVic2
 		public Dictionary<string, Eu4Religion> Religions { get; set; }
 		public Dictionary<string, Eu4ReligionGroup> ReligiousGroups { get; set; }
 
-
+		public List<string> Buildings { get; set; }
 		public Dictionary<string, Eu4Country> Countries { get; set; }
 		public Dictionary<int, Eu4Province> Provinces { get; private set; }
 		public Dictionary<string, Eu4Culture> Cultures { get; private set; }
 		public Dictionary<string, Eu4CultureGroup> CultureGroups { get; private set; }
+		public Dictionary<string, string> Localisation { get; private set; }
 
 		public Eu4Save(string filePath, string modFilePath)
 		{
+			
 			ModPath = modFilePath;
+			LoadLocalisation();
 			ReadSave(filePath);
 			PlayerTag = RootList.KeyValuePairs["player"];
-
+			LoadBuildingData();
 			//LoadCountryTags();
 			LoadCountryData();
-			Console.WriteLine($"Average merc: {Countries.Where(c => c.Value.Exists).Sum(c => c.Value.Mercantilism) / Countries.Count}");
+			//Console.WriteLine($"Average merc: {Countries.Where(c => c.Value.Exists).Sum(c => c.Value.Mercantilism) / Countries.Count}");
 			LoadProvinceData();
 
 			LoadReligionData();
 			LoadCultureData();
+			
 			Console.WriteLine("EU4 data loaded.");
+		}
+
+		private void LoadLocalisation()
+		{
+			Console.WriteLine("Loading EU4 localisation...");
+			Localisation = new Dictionary<string, string>();
+			var files = GetFilesFor("localisation");
+			foreach (var file in files)
+			{
+				if (Path.GetFileNameWithoutExtension(file).EndsWith("l_english"))
+				{
+					LoadLocalisationFile(file);
+				}
+			}
+			
+		}
+
+		private void LoadLocalisationFile(string path)
+		{
+			using (var file = new StreamReader(path))
+			{
+
+				var first = file.ReadLine().Trim();
+				if (first == "l_english:")
+				{
+
+					var key = new StringBuilder();
+					var value = new StringBuilder();
+					var readKey = true;
+					var readValue = false;
+					var inQuotes = false;
+					while (!file.EndOfStream)
+					{
+						var ch = Convert.ToChar(file.Read());
+						if (char.IsWhiteSpace(ch) && !inQuotes)
+						{
+							if (!readKey)
+							{
+								if (readValue)
+								{
+									Localisation[key.ToString()] = value.ToString();
+									key = new StringBuilder();
+									value = new StringBuilder();
+									readValue = false;
+									readKey = true;
+								}
+								else
+								{
+									readValue = true;
+								}
+							}
+
+							continue;
+						}
+						if (ch == '"')
+						{
+							inQuotes = !inQuotes;
+							continue;
+						}
+						if (ch == ':' && readKey && !inQuotes)
+						{
+							readKey = false;
+							continue;
+						}
+						if (readKey)
+						{
+							key.Append(ch);
+						}
+						if (readValue)
+						{
+							value.Append(ch);
+						}
+					}
+
+					//Console.WriteLine(Localisation);
+				}
+			}
+		}
+
+		private void LoadBuildingData()
+		{
+			Buildings = new List<string>();
+			var buildFiles = GetFilesFor(@"common\buildings");
+			foreach (var buildFile in buildFiles)
+			{
+				var buildings = PdxSublist.ReadFile(buildFile);
+				Buildings.AddRange(buildings.Sublists.Keys);
+			}
 		}
 
 		private void LoadCultureData()
 		{
 			Cultures = new Dictionary<string, Eu4Culture>();
 			CultureGroups = new Dictionary<string, Eu4CultureGroup>();
-			var relFiles = GetFilesFor(@"common\Cultures");
+			var relFiles = GetFilesFor(@"common\cultures");
+			var ignores = new string[] {"male_names", "female_names", "dynasty_names" };
 			foreach (var relFile in relFiles)
 			{
 				var cultures = PdxSublist.ReadFile(relFile);
@@ -53,13 +146,13 @@ namespace Eu4ToVic2
 				{
 					if (!CultureGroups.ContainsKey(culGroup.Key))
 					{
-						CultureGroups[culGroup.Key] = new Eu4CultureGroup(culGroup.Key);
+						CultureGroups[culGroup.Key] = new Eu4CultureGroup(culGroup.Key, this);
 					}
 					foreach (var cul in culGroup.Value.Sublists)
 					{
-						if (!Cultures.ContainsKey(cul.Key) && cul.Key != "male_names")
+						if (!Cultures.ContainsKey(cul.Key) && ignores.All(ign => ign != cul.Key))
 						{
-							Cultures[cul.Key] = CultureGroups[culGroup.Key].AddCulture(cul.Value);
+							Cultures[cul.Key] = CultureGroups[culGroup.Key].AddCulture(cul.Value, this);
 						}
 					}
 
@@ -72,20 +165,22 @@ namespace Eu4ToVic2
 			Religions = new Dictionary<string, Eu4Religion>();
 			ReligiousGroups = new Dictionary<string, Eu4ReligionGroup>();
 			var relFiles = GetFilesFor(@"common\religions");
+			var rgx = new Regex(@"\d+$");
 			foreach (var relFile in relFiles)
 			{
 				var religions = PdxSublist.ReadFile(relFile);
 				foreach (var relGroup in religions.Sublists)
 				{
-					if (!ReligiousGroups.ContainsKey(relGroup.Key))
+					var key = rgx.Replace(relGroup.Key, string.Empty);
+					if (!ReligiousGroups.ContainsKey(key))
 					{
-						ReligiousGroups[relGroup.Key] = new Eu4ReligionGroup(relGroup.Key);
+						ReligiousGroups[relGroup.Key] = new Eu4ReligionGroup(key, this);
 					}
 					foreach (var rel in relGroup.Value.Sublists)
 					{
 						if (!Religions.ContainsKey(rel.Key) && rel.Key != "flag_emblem_index_range")
 						{
-							Religions[rel.Key] = ReligiousGroups[relGroup.Key].AddReligion(rel.Value);
+							Religions[rel.Key] = ReligiousGroups[key].AddReligion(rel.Value, this);
 						}
 					}
 					
@@ -107,7 +202,7 @@ namespace Eu4ToVic2
 					//country does not exist
 					continue;
 				}
-				var country = new Eu4Country(countryList.Value);
+				var country = new Eu4Country(countryList.Value, this);
 				Countries.Add(country.CountryTag, country);
 			}
 			Console.WriteLine($"Loaded {Countries.Count} countries.");
@@ -157,11 +252,11 @@ namespace Eu4ToVic2
 		//	Console.WriteLine(CountryTags[0]);
 		//}
 
-		private List<string> GetFilesFor(string path)
+		public List<string> GetFilesFor(string path)
 		{
 			var modPath = Path.Combine(ModPath, path);
-			var gameFiles = Directory.GetFiles(GAME_PATH + path);
-			var modFileNames = Directory.GetFiles(modPath).Select(Path.GetFileName);
+			var gameFiles = Directory.GetFiles(Path.Combine(GAME_PATH, path));
+			var modFileNames = Directory.Exists(modPath) ? Directory.GetFiles(modPath).Select(Path.GetFileName) : new string[] { };
 			var files = new List<string>();
 			foreach (var name in gameFiles)
 			{

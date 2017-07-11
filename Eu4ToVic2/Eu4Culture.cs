@@ -9,6 +9,7 @@ namespace Eu4ToVic2
 	public class Eu4Culture
 	{
 		public string Name { get; set; }
+		public string DisplayName { get; set; }
 		public Eu4CultureGroup Group { get; set; }
 		public string PrimaryNation { get; set; }
 		public List<string> MaleNames { get; set; }
@@ -16,9 +17,10 @@ namespace Eu4ToVic2
 		public List<string> DynastyNames { get; set; }
 		
 
-		public Eu4Culture(PdxSublist data, Eu4CultureGroup group)
+		public Eu4Culture(PdxSublist data, Eu4CultureGroup group, Eu4Save save)
 		{
 			Name = data.Key;
+			DisplayName = save.Localisation.ContainsKey(Name) ? save.Localisation[Name] : Name;
 			Group = group;
 			if (data.KeyValuePairs.ContainsKey("primary"))
 			{
@@ -38,10 +40,12 @@ namespace Eu4ToVic2
 	{
 		public string Name { get; set; }
 		public List<Eu4Culture> Cultures { get; set; }
+		public string DisplayName { get; internal set; }
 
-		public Eu4CultureGroup(string name)
+		public Eu4CultureGroup(string name, Eu4Save save)
 		{
 			Name = name;
+			DisplayName = save.Localisation[name];
 			Cultures = new List<Eu4Culture>();
 			//foreach(var sub in data.Sublists)
 			//{
@@ -52,9 +56,9 @@ namespace Eu4ToVic2
 			//}
 		}
 
-		public Eu4Culture AddCulture(PdxSublist data)
+		public Eu4Culture AddCulture(PdxSublist data, Eu4Save save)
 		{
-			var culture = new Eu4Culture(data, this);
+			var culture = new Eu4Culture(data, this, save);
 			Cultures.Add(culture);
 			return culture;
 		}

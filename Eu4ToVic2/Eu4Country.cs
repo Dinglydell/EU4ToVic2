@@ -68,11 +68,16 @@ namespace Eu4ToVic2
 
 		public bool Exists { get; set; }
 
+		public string DisplayNoun { get; set; }
+		public string DisplayAdj { get; set; }
 
 		public byte GovernmentRank { get; set; }
 
 		public List<bool> Institutions { get; private set; }
 		public string CountryTag { get; set; }
+		public string Overlord { get; set; }
+		public float LibertyDesire { get; set; }
+
 		public int Capital { get; set; }
 
 		public Colour MapColour { get; set; }
@@ -111,13 +116,40 @@ namespace Eu4ToVic2
 		public List<string> Flags { get; set; }
 
 		public List<string> Policies { get; set; }
+		public bool IsColonialNation { get; private set; }
 
-		public Eu4Country(PdxSublist country)
+		public Eu4Country(PdxSublist country, Eu4Save save)
 		{
 			CountryTag = country.Key;
 			//Console.WriteLine($"Loading {CountryTag}...");
+			if (country.KeyValuePairs.ContainsKey("name"))
+			{
+				DisplayNoun = country.KeyValuePairs["name"].Replace("\"", string.Empty);
+			} else { 
+				DisplayNoun = save.Localisation[CountryTag];
+			}
+			if (country.KeyValuePairs.ContainsKey("adjective"))
+			{
+				DisplayAdj = country.KeyValuePairs["adjective"].Replace("\"", string.Empty);
+			}
+			else {
+				DisplayAdj = save.Localisation[$"{CountryTag}_ADJ"];
+			}
 
 			Exists = country.Sublists.ContainsKey("owned_provinces");
+
+			if (country.KeyValuePairs.ContainsKey("overlord"))
+			{
+				Overlord = country.KeyValuePairs["overlord"].Replace("\"", string.Empty);
+			}
+			if (country.KeyValuePairs.ContainsKey("liberty_desire"))
+			{
+				LibertyDesire = float.Parse(country.KeyValuePairs["liberty_desire"]);
+			}
+			if (country.KeyValuePairs.ContainsKey("colonial_parent"))
+			{
+				IsColonialNation = true;
+			}
 
 			var institutions = country.Sublists["institutions"];
 			Institutions = institutions.Values.Select(ins => int.Parse(ins) == 1).ToList();

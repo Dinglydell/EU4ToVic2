@@ -31,6 +31,8 @@ namespace Eu4ToVic2
 
 		public List<string> Flags { get; set; }
 
+		public List<string> Buildings { get; set; }
+
 		public Eu4Province(PdxSublist province, Eu4Save save)
 		{
 			ProvinceID = -int.Parse(province.Key);
@@ -74,6 +76,15 @@ namespace Eu4ToVic2
 			if (province.Sublists.ContainsKey("flags"))
 			{
 				Flags = province.Sublists["flags"].KeyValuePairs.Keys.ToList();
+			}
+
+			Buildings = new List<string>();
+			foreach (var build in save.Buildings)
+			{
+				if(province.KeyValuePairs.ContainsKey(build) && province.KeyValuePairs[build] == "yes")
+				{
+					Buildings.Add(build);
+				}
 			}
 
 			if (ProvinceID == 233)

@@ -37,7 +37,7 @@ namespace Eu4ToVic2
 	public class Mapper
 	{
 		private Dictionary<string, string> Country { get; set; }
-		private Dictionary<string, string> Culture { get; set; }
+		public Dictionary<string, string> Culture { get; set; }
 		private Dictionary<string, string> Religion { get; set; }
 		private Dictionary<string, string> Government { get; set; }
 		public List<Monarchy> Monarchies { get; set; }

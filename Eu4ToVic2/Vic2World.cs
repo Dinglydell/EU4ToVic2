@@ -18,10 +18,15 @@ namespace Eu4ToVic2
 		public ProvinceMapper ProvMapper { get; set; }
 		public Mapper V2Mapper { get; set; }
 		public List<Vic2Country> Vic2Countries { get; set; }
+		/// <summary>
+		/// All countries that exist in vic2, not just those that must have files generated
+		/// </summary>
+		public HashSet<string> ExistingCountries { get; set; }
 		public List<Vic2Province> Vic2Provinces { get; set; }
 
-		
-
+		public Dictionary<string, string> Localisation { get; set; }
+		public PdxSublist LocalisationHelper { get; set; }
+		public PdxSublist CultureNations { get; set; }
 		public PdxSublist CountryEffects { get; set; }
 		public PdxSublist ProvinceEffects { get; set; }
 		public Dictionary<Ideology, IdeologyModifier> IdeologyModifiers { get; set; }
@@ -35,6 +40,7 @@ namespace Eu4ToVic2
 		public Dictionary<string, Vic2ReligionGroup> ReligiousGroups { get; set; }
 		internal Dictionary<string, Vic2CultureGroup> CultureGroups { get; private set; }
 		public Dictionary<string, Vic2Culture> Cultures { get; private set; }
+		public int NumCultureNations { get; internal set; }
 
 		public Vic2World(Eu4Save eu4Save)
 		{
@@ -43,14 +49,18 @@ namespace Eu4ToVic2
 			ReligiousGroups = new Dictionary<string, Vic2ReligionGroup>();
 			V2Mapper = new Mapper(this);
 			ProvMapper = new ProvinceMapper("province_mappings.txt");
+			LoadLocalisationHelper();
 			LoadEffects();
 			LoadPoliticalParties();
 			LoadVicTech();
 			LoadVicReligion();
 			LoadVicCulture();
+			LoadExistingCountries();
 			Console.WriteLine("Constructing Vic2 world...");
 			GenerateCountries();
+			GeneratePrimaryNations();
 			GenerateProvinces();
+			
 			Console.WriteLine("Generating mod...");
 			CreateModFolders();
 			CreateCountryFiles();
@@ -58,22 +68,89 @@ namespace Eu4ToVic2
 			CreatePopFiles();
 			CreateReligionFile();
 			CreateCultureFile();
+			CreatLocalisationFiles();
 			Console.WriteLine("Done!");
 		}
 
-		
+		private void LoadLocalisationHelper()
+		{
+			LocalisationHelper = PdxSublist.ReadFile("localisation.txt");
+		}
+
+		private void CreatLocalisationFiles()
+		{
+			Localisation = new Dictionary<string, string>();
+			//countries
+			foreach (var country in Vic2Countries)
+			{
+				country.AddLocalisation(Localisation, LocalisationHelper);
+			}
+			//cultures
+			foreach (var cultureGroup in CultureGroups)
+			{
+				cultureGroup.Value.AddLocalisation(Localisation);
+			}
+			//religion
+			foreach (var religionGroup in ReligiousGroups)
+			{
+				religionGroup.Value.AddLocalisation(Localisation);
+			}
+
+			Directory.CreateDirectory(Path.Combine(OUTPUT, "localisation"));
+			using (var file = File.CreateText(Path.Combine(OUTPUT, @"localisation\converted.csv")))
+			{
+				foreach (var locale in Localisation)
+				{
+					file.Write(locale.Key);
+					for (var i = 0; i < 14; i++)
+					{
+						file.Write(';');
+						file.Write(locale.Value);
+					}
+					file.WriteLine();
+				}
+			}
+		}
+
+		private void GeneratePrimaryNations()
+		{
+			foreach (var cultureGroup in CultureGroups)
+			{
+				cultureGroup.Value.SetupUnionNation(this);
+			}
+			foreach (var culture in Cultures)
+			{
+				culture.Value.SetupPrimaryNation(this);
+			}
+
+			
+		}
+
+		private void LoadExistingCountries()
+		{
+			ExistingCountries = new HashSet<string>();
+			var countries = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"common\countries.txt"));
+			foreach(var c in countries.KeyValuePairs.Keys)
+			{
+				ExistingCountries.Add(c);
+			}
+		}
 
 		private void LoadVicCulture()
 		{
+			Console.WriteLine("Loading Vic2 Cultures...");
 			CultureGroups = new Dictionary<string, Vic2CultureGroup>();
 			Cultures = new Dictionary<string, Vic2Culture>();
 			var cultures = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"common\cultures.txt"));
 			foreach (var culGroup in cultures.Sublists)
 			{
-				var nextGroup = new Vic2CultureGroup(culGroup.Value);
+				var nextGroup = new Vic2CultureGroup(this, culGroup.Value);
 				CultureGroups[culGroup.Key] = nextGroup;
 				nextGroup.Cultures.ForEach(c => Cultures.Add(c.Name, c));
 			}
+
+			Console.WriteLine("Loading cultureNations.txt");
+			CultureNations = PdxSublist.ReadFile("cultureNations.txt");
 		}
 
 		private void CreateReligionFile()
@@ -123,7 +200,7 @@ namespace Eu4ToVic2
 			var vanillaFiles = Directory.GetFiles(Path.Combine(VIC2_DIR, @"history\pops\1836.1.1"));
 			foreach (var file in vanillaFiles)
 			{
-				using (File.CreateText(Path.Combine(startDir.FullName, Path.GetFileName(file)))) ;
+				using (File.CreateText(Path.Combine(startDir.FullName, Path.GetFileName(file)))) { }
 			}
 			var pops = new PdxSublist(null);
 			foreach (var province in Vic2Provinces)
@@ -160,15 +237,27 @@ namespace Eu4ToVic2
 
 		private void CreateModFolders()
 		{
-
+			
 			if (Directory.Exists(OUTPUT))
 			{
-				Directory.Delete(OUTPUT, true);
+				DeleteDir(OUTPUT);
+				
 			}
 			Directory.CreateDirectory(OUTPUT);
 			Directory.CreateDirectory(Path.Combine(OUTPUT, "common"));
 			Directory.CreateDirectory(Path.Combine(OUTPUT, "history"));
 			Directory.CreateDirectory(Path.Combine(OUTPUT, "gfx"));
+		}
+
+		private void DeleteDir(string path)
+		{
+			foreach(var dir in Directory.GetDirectories(path)) {
+				DeleteDir(dir);
+			}
+			foreach(var file in Directory.GetFiles(path)){
+				File.Delete(file);
+			}
+			Directory.Delete(path, true);
 		}
 
 		public string GenerateReligion(string religion)
@@ -192,7 +281,7 @@ namespace Eu4ToVic2
 			var group = Eu4Save.CultureGroups.FirstOrDefault(g => g.Value.Cultures.Contains(Eu4Save.Cultures[eu4Culture])).Value;
 			if (!CultureGroups.ContainsKey(group.Name))
 			{
-				CultureGroups[group.Name] = new Vic2CultureGroup(group.Name);
+				CultureGroups[group.Name] = new Vic2CultureGroup(group);
 			}
 			Cultures[vic2Name] = CultureGroups[group.Name].AddCulture(eu4Culture, this, vic2Name);
 			return eu4Culture;
@@ -226,6 +315,9 @@ namespace Eu4ToVic2
 			var dir = Directory.CreateDirectory(Path.Combine(OUTPUT, @"common\countries"));
 			var histDir = Directory.CreateDirectory(Path.Combine(OUTPUT, @"history\countries"));
 			var flagDir = Directory.CreateDirectory(Path.Combine(OUTPUT, @"gfx\flags"));
+			var eu4Flags = Eu4Save.GetFilesFor(@"gfx\flags");
+			var vic2Flags = Directory.GetFiles(Path.Combine(VIC2_DIR, @"gfx\flags"));
+			var suffixes = new string[] { "", "_communist", "_fascist", "_monarchy", "_republic" };
 			foreach (var country in Vic2Countries)
 			{
 				//common\countries
@@ -238,11 +330,14 @@ namespace Eu4ToVic2
 				{
 					country.GetHistoryCountryFile().WriteToFile(file);
 				}
-
-				var suffixes = new string[] { "", "_communist", "_fascist", "_monarchy", "_republic" };
-				foreach (var suff in suffixes)
+				if (vic2Flags.FirstOrDefault(f => Path.GetFileName(f).StartsWith(country.CountryTag)) == null)
 				{
-					File.Copy($"ENG{suff}.tga", Path.Combine(flagDir.FullName, $"{country.CountryTag}{suff}.tga"));
+
+					var eu4Flag = eu4Flags.Find(f => Path.GetFileName(f).StartsWith(country.Eu4Country?.CountryTag ?? "!"));
+					foreach (var suff in suffixes)
+					{
+						File.Copy(eu4Flag ?? $"ENG{suff}.tga", Path.Combine(flagDir.FullName, $"{country.CountryTag}{suff}.tga"));
+					}
 				}
 
 			}
@@ -283,7 +378,7 @@ namespace Eu4ToVic2
 			foreach (var prov in provs)
 			{
 				var v2Prov = FindProvinceFile(prov.Key);
-				if (v2Prov != null)
+				if (v2Prov != null && prov.Value.Count > 0)
 				{
 					Vic2Provinces.Add(new Vic2Province(prov.Key, v2Prov, this, provs.Count(p => prov.Value.All(p.Value.Contains)), prov.Value));
 				}
@@ -322,6 +417,10 @@ namespace Eu4ToVic2
 
 		public Vic2Country GetCountry(Eu4Country eu4Country)
 		{
+			if(eu4Country == null)
+			{
+				return null;
+			}
 			return Vic2Countries.Find(c => c.Eu4Country == eu4Country);
 		}
 		public Vic2Country GetCountry(string eu4CountryTag)
