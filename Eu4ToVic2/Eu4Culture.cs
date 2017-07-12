@@ -24,13 +24,21 @@ namespace Eu4ToVic2
 			Group = group;
 			if (data.KeyValuePairs.ContainsKey("primary"))
 			{
-				PrimaryNation = data.KeyValuePairs["primary"];
+				PrimaryNation = data.GetString("primary");
 			}
-			
-			MaleNames = data.Sublists.ContainsKey("male_names") ? data.Sublists["male_names"].Values : new List<string>();
-			FemaleNames = data.Sublists.ContainsKey("female_names") ? data.Sublists["female_names"].Values : new List<string>();
-		
-			DynastyNames = data.Sublists.ContainsKey("dynasty_names") ? data.Sublists["dynasty_names"].Values : new List<string>();
+
+			MaleNames = new List<string>();
+			data.Sublists.ForEach("male_names", (sub) =>
+			{
+				MaleNames.AddRange(sub.Values);
+			});// ? data.GetSublist("male_names").Values : new List<string>();
+			FemaleNames = new List<string>();
+			data.Sublists.ForEach("female_names", (sub) =>
+			{
+				FemaleNames.AddRange(sub.Values);
+			});
+
+			DynastyNames = data.Sublists.ContainsKey("dynasty_names") ? data.GetSublist("dynasty_names").Values : new List<string>();
 			
 		}
 

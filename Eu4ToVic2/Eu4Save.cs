@@ -25,6 +25,7 @@ namespace Eu4ToVic2
 		public Dictionary<string, Eu4Culture> Cultures { get; private set; }
 		public Dictionary<string, Eu4CultureGroup> CultureGroups { get; private set; }
 		public Dictionary<string, string> Localisation { get; private set; }
+		internal List<Eu4DiploRelation> Relations { get; private set; }
 
 		public Eu4Save(string filePath, string modFilePath)
 		{
@@ -32,10 +33,11 @@ namespace Eu4ToVic2
 			ModPath = modFilePath;
 			LoadLocalisation();
 			ReadSave(filePath);
-			PlayerTag = RootList.KeyValuePairs["player"];
+			PlayerTag = RootList.GetString("player");
 			LoadBuildingData();
 			//LoadCountryTags();
 			LoadCountryData();
+			LoadDiploRelations();
 			//Console.WriteLine($"Average merc: {Countries.Where(c => c.Value.Exists).Sum(c => c.Value.Mercantilism) / Countries.Count}");
 			LoadProvinceData();
 
@@ -43,6 +45,26 @@ namespace Eu4ToVic2
 			LoadCultureData();
 			
 			Console.WriteLine("EU4 data loaded.");
+		}
+
+		private void LoadDiploRelations()
+		{
+			Console.WriteLine("Loading countries...");
+			Relations = new List<Eu4DiploRelation>();
+			var relations = RootList.GetSublist("diplomacy");
+			relations.ForEachSublist(relation =>
+			{
+				if(Enum.GetNames(typeof(Relation)).Contains(relation.Key))
+				{
+					Relations.Add(new Eu4DiploRelation(relation.Value, this));
+				}
+			});
+			//var distinctRelations = relations.Sublists.Keys.Distinct();
+			//foreach (var dr in distinctRelations)
+			//{
+			//	Console.WriteLine(dr);
+			//}
+			//Console.WriteLine();
 		}
 
 		private void LoadLocalisation()
@@ -142,21 +164,21 @@ namespace Eu4ToVic2
 			foreach (var relFile in relFiles)
 			{
 				var cultures = PdxSublist.ReadFile(relFile);
-				foreach (var culGroup in cultures.Sublists)
+				cultures.ForEachSublist(culGroup =>
 				{
 					if (!CultureGroups.ContainsKey(culGroup.Key))
 					{
 						CultureGroups[culGroup.Key] = new Eu4CultureGroup(culGroup.Key, this);
 					}
-					foreach (var cul in culGroup.Value.Sublists)
+					culGroup.Value.ForEachSublist(cul =>
 					{
 						if (!Cultures.ContainsKey(cul.Key) && ignores.All(ign => ign != cul.Key))
 						{
 							Cultures[cul.Key] = CultureGroups[culGroup.Key].AddCulture(cul.Value, this);
 						}
-					}
+					});
 
-				}
+				});
 			}
 		}
 
@@ -169,22 +191,22 @@ namespace Eu4ToVic2
 			foreach (var relFile in relFiles)
 			{
 				var religions = PdxSublist.ReadFile(relFile);
-				foreach (var relGroup in religions.Sublists)
+				religions.ForEachSublist(relGroup =>
 				{
 					var key = rgx.Replace(relGroup.Key, string.Empty);
 					if (!ReligiousGroups.ContainsKey(key))
 					{
 						ReligiousGroups[relGroup.Key] = new Eu4ReligionGroup(key, this);
 					}
-					foreach (var rel in relGroup.Value.Sublists)
+					relGroup.Value.ForEachSublist(rel =>
 					{
 						if (!Religions.ContainsKey(rel.Key) && rel.Key != "flag_emblem_index_range")
 						{
 							Religions[rel.Key] = ReligiousGroups[key].AddReligion(rel.Value, this);
 						}
-					}
-					
-				}
+					});
+
+				});
 			}
 			
 		}
@@ -193,18 +215,18 @@ namespace Eu4ToVic2
 		{
 			Console.WriteLine("Loading countries...");
 			Countries = new Dictionary<string, Eu4Country>();
-			var countries = RootList.Sublists["countries"];
-			foreach (var countryList in countries.Sublists)
+			var countries = RootList.GetSublist("countries");
+			countries.ForEachSublist(countryList =>
 			{
 				//if (!countryList.Value.KeyValuePairs.ContainsKey("primary_culture") || !countryList.Value.KeyValuePairs.ContainsKey("estimated_monthly_income") || float.Parse(countryList.Value.KeyValuePairs["estimated_monthly_income"]) <= 0.001)
 				if (!countryList.Value.Sublists.ContainsKey("core_provinces"))
 				{
 					//country does not exist
-					continue;
+					return;
 				}
 				var country = new Eu4Country(countryList.Value, this);
 				Countries.Add(country.CountryTag, country);
-			}
+			});
 			Console.WriteLine($"Loaded {Countries.Count} countries.");
 			Console.WriteLine($"{Countries.Count(c => c.Value.Exists)} countries exist.");
 			Console.WriteLine($"{Countries.Count(c => c.Value.Institutions[6]) } countries have embraced enlightenment.");
@@ -214,16 +236,16 @@ namespace Eu4ToVic2
 		{
 			Console.WriteLine("Loading provinces...");
 			Provinces = new Dictionary<int, Eu4Province>();
-			var provinces = RootList.Sublists["provinces"];
-			foreach (var provList in provinces.Sublists)
+			var provinces = RootList.GetSublist("provinces");
+			provinces.ForEachSublist(provList =>
 			{
 				if (!provList.Value.KeyValuePairs.ContainsKey("culture"))
 				{
-					continue;
+					return;
 				}
 				var province = new Eu4Province(provList.Value, this);
 				Provinces.Add(province.ProvinceID, province);
-			}
+			});
 
 			Console.WriteLine($"Loaded {Provinces.Count} provinces.");
 		}

@@ -59,6 +59,8 @@ namespace Eu4ToVic2
 		public bool FemaleLeaders { get; set; }
 		public IdeologyModifier BasePartyModifier { get; private set; }
 
+
+
 		public Vic2Country(Vic2World vic2World, Eu4Country eu4Country)
 		{
 			CountryTag = vic2World.V2Mapper.GetV2Country(eu4Country.CountryTag);
@@ -93,6 +95,10 @@ namespace Eu4ToVic2
 			{
 				Government = "prussian_constitutionalism";
 			}
+			if(Government == null)
+			{
+				Console.WriteLine("Uh oh");
+			}
 			//RulingParty = PoliticalParties.First(p => p.Ideology == UpperHouse.GetMode());
 			if (CountryTag == "ENG")
 			{
@@ -104,17 +110,18 @@ namespace Eu4ToVic2
 		{
 			if (!IsVic2Country)
 			{
+				
 				localisation.Add(CountryTag, DisplayNoun);
 				localisation.Add($"{CountryTag}_ADJ", DisplayAdj);
-				foreach (var gov in localeHelper.Sublists["government"].KeyValuePairs)
+				localeHelper.GetSublist("government").ForEachString(gov =>
 				{
 					// eg. "People's Republic of %NOUN%" -> "People's Republic of France"
 					localisation.Add($"{CountryTag}_{gov.Key}", gov.Value.Replace("%NOUN%", DisplayNoun).Replace("%ADJ%", DisplayAdj).Replace("\"", string.Empty));
-				}
+				});
 
 				foreach (var party in PoliticalParties)
 				{
-					localisation.Add(party.Name, localeHelper.Sublists["party"].KeyValuePairs[Enum.GetName(typeof(Ideology), party.Ideology)].Replace("\"", string.Empty));
+					localisation.Add(party.Name, localeHelper.GetSublist("party").GetString(Enum.GetName(typeof(Ideology), party.Ideology)).Replace("\"", string.Empty));
 				}
 			}
 		}
@@ -133,13 +140,14 @@ namespace Eu4ToVic2
 			IsVic2Country = !world.ExistingCountries.Add(tag);
 			if (!IsVic2Country)
 			{
+				GraphicalCulture = "Generic";
 				world.Vic2Countries.Add(this);
 				//setup
 				Capital = 1;
 
 				PrimaryCulture = primaryCulture.Name;
-				DisplayNoun = world.LocalisationHelper.Sublists["culture_nation"].KeyValuePairs["noun"].Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
-                DisplayAdj = world.LocalisationHelper.Sublists["culture_nation"].KeyValuePairs["adj"].Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
+				DisplayNoun = world.LocalisationHelper.GetSublist("culture_nation").GetString("noun").Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
+                DisplayAdj = world.LocalisationHelper.GetSublist("culture_nation").GetString("adj").Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
 
 				AcceptedCultures = new List<string>();
 				PoliticalParties = new List<PoliticalParty>();
@@ -170,34 +178,34 @@ namespace Eu4ToVic2
 		public PdxSublist GetHistoryCountryFile()
 		{
 			var data = new PdxSublist(null);
-			data.AddString("capital", Capital.ToString());
-			data.AddString("primary_culture", PrimaryCulture);
-			AcceptedCultures.ForEach(c => data.AddString("culture", c));
-			data.AddString("religion", Religion);
-			data.AddString("government", Government);
-			data.AddString("plurality", Plurality.ToString());
+			data.AddValue("capital", Capital.ToString());
+			data.AddValue("primary_culture", PrimaryCulture);
+			AcceptedCultures.ForEach(c => data.AddValue("culture", c));
+			data.AddValue("religion", Religion);
+			data.AddValue("government", Government);
+			data.AddValue("plurality", Plurality.ToString());
 			if (NationalValues != null)
 			{
-				data.AddString("nationalvalue", NationalValues.Value);
+				data.AddValue("nationalvalue", NationalValues.Value);
 			}
-			data.AddString("literacy", Literacy.ToString());
-			data.AddString("civilized", IsCivilised ? "yes" : "no");
+			data.AddValue("literacy", Literacy.ToString());
+			data.AddValue("civilized", IsCivilised ? "yes" : "no");
 
-			data.AddString("prestige", Prestige.ToString());
+			data.AddValue("prestige", Prestige.ToString());
 			if (Reforms != null)
 			{
 				Reforms.AddData(data);
 			}
 			if (Technologies != null)
 			{
-				Technologies.ForEach(t => data.AddString(t, "1"));
+				Technologies.ForEach(t => data.AddValue(t, "1"));
 			}
-			data.AddString("consciousness", Consciousness.ToString());
+			data.AddValue("consciousness", Consciousness.ToString());
 			// todo
-			data.AddString("nonstate_consciousness", (Consciousness / 3).ToString());
+			data.AddValue("nonstate_consciousness", (Consciousness / 3).ToString());
 			if (RulingParty != null)
 			{
-				data.AddString("ruling_party", RulingParty.Name);
+				data.AddValue("ruling_party", RulingParty.Name);
 			}
 			data.AddDate("last_election", LastElection);
 			if (UpperHouse != null)
@@ -206,13 +214,13 @@ namespace Eu4ToVic2
 			}
 			if (TechSchools != null)
 			{
-				data.AddString("schools", Enum.GetName(typeof(TechSchool), TechSchools.TechSchool));
+				data.AddValue("schools", Enum.GetName(typeof(TechSchool), TechSchools.TechSchool));
 			}
 
 			if (FemaleLeaders)
 			{
 				var entry = new PdxSublist();
-				entry.AddString("decision", "enact_female_suffrage");
+				entry.AddValue("decision", "enact_female_suffrage");
 
 				data.AddSublist("1836.1.1", entry);
 			}
@@ -229,7 +237,7 @@ namespace Eu4ToVic2
 			colour.Values.Add(MapColour.Blue.ToString());
 			data.AddSublist("color", colour);
 
-			data.AddString("graphical_culture", GraphicalCulture);
+			data.AddValue("graphical_culture", GraphicalCulture);
 
 			foreach (var party in PoliticalParties)
 			{
@@ -479,14 +487,15 @@ namespace Eu4ToVic2
 		}
 		public static void IterateCountryEffects(Vic2World vic2World, Eu4Country country, PdxSublist effects, Action<Dictionary<string, float>> callback)
 		{
+			
 			if (effects.Sublists.ContainsKey("ideas"))
 			{
 				//idea groups
 				foreach (var idea in country.Ideas)
 				{
-					if (effects.Sublists["ideas"].Sublists.ContainsKey(idea.Key))
+					if (effects.GetSublist("ideas").Sublists.ContainsKey(idea.Key))
 					{
-						callback(effects.Sublists["ideas"].Sublists[idea.Key].KeyValuePairs.ToDictionary(effect => effect.Key, effect => (idea.Value + 1) * float.Parse(effect.Value)));
+						callback(effects.GetSublist("ideas").GetSublist(idea.Key).FloatValues.ToDictionary(effect => effect.Key, effect => (idea.Value + 1) * effect.Value.Sum()));
 					}
 				}
 			}
@@ -496,27 +505,30 @@ namespace Eu4ToVic2
 			{
 				foreach (var flag in country.Flags)
 				{
-					if (effects.Sublists["country_flags"].Sublists.ContainsKey(flag))
+					if (effects.GetSublist("country_flags").Sublists.ContainsKey(flag))
 					{
-						callback(effects.Sublists["country_flags"].Sublists[flag].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+						callback(effects.GetSublist("country_flags").GetSublist(flag).FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum()));
 					}
 				}
 			}
 			// religion
 			if (effects.Sublists.ContainsKey("religion"))
 			{
-				if (effects.Sublists["religion"].Sublists.ContainsKey(country.Religion))
+				if (effects.GetSublist("religion").Sublists.ContainsKey(country.Religion))
 				{
-					callback(effects.Sublists["religion"].Sublists[country.Religion].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+					callback(effects.GetSublist("religion").GetSublist(country.Religion).FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum()));
+					//newCallback(effects.GetSublist("religion").GetSublist(country.Religion), 1);
 				}
 			}
 
 			// government
 			if (effects.Sublists.ContainsKey("government"))
 			{
-				if (effects.Sublists["government"].Sublists.ContainsKey(country.Government))
+				if (effects.GetSublist("government").Sublists.ContainsKey(country.Government))
 				{
-					callback(effects.Sublists["government"].Sublists[country.Government].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+					callback(effects.GetSublist("government").GetSublist(country.Government).FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum()));
+					//newCallback(effects.GetSublist("government").GetSublist(country.Government), 1);
+					//callback(effects.Sublists["government"].Sublists[country.Government].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
 				}
 			}
 
@@ -525,9 +537,11 @@ namespace Eu4ToVic2
 			{
 				foreach (var policy in country.Policies)
 				{
-					if (effects.Sublists["policies"].Sublists.ContainsKey(policy))
+					if (effects.GetSublist("policies").Sublists.ContainsKey(policy))
 					{
-						callback(effects.Sublists["policies"].Sublists[policy].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
+						callback(effects.GetSublist("policies").GetSublist(policy).FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum()));
+						//newCallback(effects.GetSublist("policies").GetSublist(policy), 1);
+						//callback(effects.Sublists["policies"].Sublists[policy].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value)));
 					}
 				}
 			}
@@ -672,16 +686,16 @@ namespace Eu4ToVic2
 		public PdxSublist GetData(PdxSublist parent)
 		{
 			var partyData = new PdxSublist(parent, "party");
-			partyData.AddString("name", Name);
+			partyData.AddValue("name", Name);
 			partyData.AddDate("start_date", StartDate);
 			partyData.AddDate("end_date", EndDate);
-			partyData.AddString("ideology", Enum.GetName(typeof(Ideology), Ideology));
+			partyData.AddValue("ideology", Enum.GetName(typeof(Ideology), Ideology));
 
 			foreach (var pos in policyPositions.Keys)
 			{
 				var prop = typeof(PoliticalParty).GetProperty(pos.Name);
 
-				partyData.AddString(pos.Name, Enum.GetName(pos, prop.GetValue(this)));
+				partyData.AddValue(pos.Name, Enum.GetName(pos, prop.GetValue(this)));
 			}
 
 			return partyData;
@@ -757,13 +771,13 @@ namespace Eu4ToVic2
 		internal PdxSublist GetData(PdxSublist parent)
 		{
 			var data = new PdxSublist(parent, "upper_house");
-			data.AddString("liberal", Liberal.ToString());
-			data.AddString("conservative", Conservative.ToString());
-			data.AddString("reactionary", Reactionary.ToString());
-			data.AddString("fascist", "0");
-			data.AddString("communist", "0");
-			data.AddString("anarcho_liberal", "0");
-			data.AddString("socialist", "0");
+			data.AddValue("liberal", Liberal.ToString());
+			data.AddValue("conservative", Conservative.ToString());
+			data.AddValue("reactionary", Reactionary.ToString());
+			data.AddValue("fascist", "0");
+			data.AddValue("communist", "0");
+			data.AddValue("anarcho_liberal", "0");
+			data.AddValue("socialist", "0");
 			return data;
 		}
 	}
@@ -855,7 +869,7 @@ namespace Eu4ToVic2
 		{
 			foreach (var reform in typeof(Reforms).GetProperties())
 			{
-				data.AddString(reform.Name, Enum.GetName(reform.PropertyType, reform.GetValue(this)));
+				data.AddValue(reform.Name, Enum.GetName(reform.PropertyType, reform.GetValue(this)));
 
 			}
 		}

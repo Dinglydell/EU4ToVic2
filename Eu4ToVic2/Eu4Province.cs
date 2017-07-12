@@ -36,23 +36,24 @@ namespace Eu4ToVic2
 		public Eu4Province(PdxSublist province, Eu4Save save)
 		{
 			ProvinceID = -int.Parse(province.Key);
-			if (province.KeyValuePairs.ContainsKey("owner")) { 
-				Owner = save.Countries[province.GetStringValue("owner")];
+			if (province.KeyValuePairs.ContainsKey("owner"))
+			{
+				Owner = save.Countries[province.GetString("owner")];
 			}
-			var institutions = province.Sublists["institutions"];
+			var institutions = province.GetSublist("institutions");
 			Institutions = institutions.Values.Select(ins => float.Parse(ins)).ToList();
 
 			Cores = new List<Eu4Country>();
 
-			province.GetAllMatchingKVPs("core", (value) =>
+			province.KeyValuePairs.ForEach("core", (value) =>
 			{
 				Cores.Add(save.Countries[value]);
 			});
 
-			Culture = province.GetStringValue("culture");
-			Religion = province.GetStringValue("religion");
+			Culture = province.GetString("culture");
+			Religion = province.GetString("religion");
 
-			var history = province.Sublists["history"];
+			var history = province.GetSublist("history");
 			CulturalHistory = AddHistory(history, "culture");
 			ReligiousHistory = AddHistory(history, "religion");
 
@@ -61,27 +62,27 @@ namespace Eu4ToVic2
 
 			if (province.KeyValuePairs.ContainsKey("fort_level"))
 			{
-				FortLevel = int.Parse(province.KeyValuePairs["fort_level"]);
+				FortLevel = (int)province.GetFloat("fort_level");
 			}
 
-			BaseTax = (int)float.Parse(province.KeyValuePairs["base_tax"]);
-			BaseProduction = (int)float.Parse(province.KeyValuePairs["base_production"]);
-			BaseManpower = (int)float.Parse(province.KeyValuePairs["base_manpower"]);
-			
+			BaseTax = (int)province.GetFloat("base_tax");
+			BaseProduction = (int)province.GetFloat("base_production");
+			BaseManpower = (int)province.GetFloat("base_manpower");
+
 			if (province.KeyValuePairs.ContainsKey("estate"))
 			{
-				Estate = Eu4ToVic2.Estate.EstateTypes[int.Parse(province.KeyValuePairs["estate"])];
+				Estate = Eu4ToVic2.Estate.EstateTypes[(int)province.GetFloat("estate")];
 			}
 
 			if (province.Sublists.ContainsKey("flags"))
 			{
-				Flags = province.Sublists["flags"].KeyValuePairs.Keys.ToList();
+				Flags = province.GetSublist("flags").KeyValuePairs.Keys.ToList();
 			}
 
 			Buildings = new List<string>();
 			foreach (var build in save.Buildings)
 			{
-				if(province.KeyValuePairs.ContainsKey(build) && province.KeyValuePairs[build] == "yes")
+				if (province.BoolValues.ContainsKey(build) && province.GetBool(build))
 				{
 					Buildings.Add(build);
 				}
@@ -91,27 +92,33 @@ namespace Eu4ToVic2
 			{
 				//Console.WriteLine("Cornwall!");
 			}
-			
+
 		}
 
-		private Dictionary<DateTime,string> AddHistory(PdxSublist history, string type)
+		private Dictionary<DateTime, string> AddHistory(PdxSublist history, string type)
 		{
 			var storedHistory = new Dictionary<DateTime, string>();
 			if (!history.KeyValuePairs.ContainsKey(type))
 			{
 				return storedHistory;
 			}
-			storedHistory.Add(new DateTime(1444, 11, 11), history.GetStringValue(type));
+			var startDate = new DateTime(1444, 11, 11);
+			history.KeyValuePairs.ForEach(type, (h =>
+			{
+				storedHistory[startDate] = h;
+			}));
 			foreach (var entry in history.Sublists)
 			{
-				if (entry.Value.KeyValuePairs.ContainsKey(type))
-				{
-					var date = PdxSublist.ParseDate(entry.Value.Key);
-					entry.Value.GetAllMatchingKVPs(type, v =>
+				var sub = entry.Value;
+					if (sub.KeyValuePairs.ContainsKey(type))
 					{
-						storedHistory[date] = v;
-					});
-				}
+
+						var date = PdxSublist.ParseDate(sub.Key);
+						sub.KeyValuePairs.ForEach(type, v =>
+						{
+							storedHistory[date] = v;
+						});
+					}
 			}
 			return storedHistory;
 

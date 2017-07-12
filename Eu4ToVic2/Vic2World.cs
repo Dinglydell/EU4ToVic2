@@ -45,6 +45,9 @@ namespace Eu4ToVic2
 		public PdxSublist PopData { get; private set; }
 		public PdxSublist Factories { get; private set; }
 
+		public List<Vic2DiploRelation> Alliances { get; set; }
+		public List<Vic2DiploRelation> Puppets { get; set; }
+
 		public Vic2World(Eu4Save eu4Save)
 		{
 
@@ -65,7 +68,7 @@ namespace Eu4ToVic2
 			GenerateCountries();
 			GeneratePrimaryNations();
 			GenerateProvinces();
-			
+			GenerateRelations();
 			Console.WriteLine("Generating mod...");
 			CreateModFolders();
 			CreateCountryFiles();
@@ -73,8 +76,53 @@ namespace Eu4ToVic2
 			CreatePopFiles();
 			CreateReligionFile();
 			CreateCultureFile();
+			CreateDiplomacyFiles();
 			CreatLocalisationFiles();
 			Console.WriteLine("Done!");
+		}
+
+		private void CreateDiplomacyFiles()
+		{
+			Console.WriteLine("Creating diplomacy files...");
+
+			var alliances = new PdxSublist();
+			foreach (var alliance in Alliances)
+			{
+				alliances.AddSublist("alliance", alliance.GetData());
+			}
+			var puppets = new PdxSublist();
+			foreach (var vassal in Puppets)
+			{
+				puppets.AddSublist("vassal", vassal.GetData());
+			}
+
+			var histDir = Directory.CreateDirectory(Path.Combine(OUTPUT, @"history\diplomacy"));
+
+			using (var file = File.CreateText(Path.Combine(histDir.FullName, "Alliances.txt")))
+			{
+				alliances.WriteToFile(file);
+			}
+			using (var file = File.CreateText(Path.Combine(histDir.FullName, "PuppetStates.txt")))
+			{
+				puppets.WriteToFile(file);
+			}
+		}
+
+		private void GenerateRelations()
+		{
+			Alliances = new List<Vic2DiploRelation>();
+			Puppets = new List<Vic2DiploRelation>();
+			foreach (var eu4Relation in Eu4Save.Relations)
+			{
+				var v = new Vic2DiploRelation(eu4Relation, this);
+				if(v.Type == V2Relation.alliance)
+				{
+					Alliances.Add(v);
+				} else if(v.Type == V2Relation.vassal)
+				{
+					Puppets.Add(v);
+				}
+			}
 		}
 
 		private void LoadFactories()
@@ -456,24 +504,24 @@ namespace Eu4ToVic2
 		}
 		public void ValueEffect(PdxSublist effects, Action<Dictionary<string, float>> callback, string key, float value)
 		{
-			if (effects.Sublists.ContainsKey("values") && effects.Sublists["values"].Sublists.ContainsKey(key))
+			if (effects.Sublists.ContainsKey("values") && effects.GetSublist("values").Sublists.ContainsKey(key))
 			{
-				effects.Sublists["values"].GetAllMatchingSublists(key, (sub) =>
+				effects.GetSublist("values").Sublists.ForEach(key, (sub) =>
 				{
 					var average = 0f;
-					if (sub.KeyValuePairs.ContainsKey("average"))
+					if (sub.FloatValues.ContainsKey("average"))
 					{
-						average = float.Parse(sub.KeyValuePairs["average"]);
+						average = sub.GetFloat("average");
 					}
 					var min = float.MinValue;
-					if (sub.KeyValuePairs.ContainsKey("minimum"))
+					if (sub.FloatValues.ContainsKey("minimum"))
 					{
-						min = float.Parse(sub.KeyValuePairs["minimum"]);
+						min = sub.GetFloat("minimum");
 					}
 					var max = float.MaxValue;
-					if (sub.KeyValuePairs.ContainsKey("maximum"))
+					if (sub.FloatValues.ContainsKey("maximum"))
 					{
-						max = float.Parse(sub.KeyValuePairs["maximum"]);
+						max = sub.GetFloat("maximum");
 					}
 
 					callback(sub.KeyValuePairs.ToDictionary(effect => effect.Key, effect => Math.Min(max, Math.Max(min, (value - average))) * float.Parse(effect.Value)));

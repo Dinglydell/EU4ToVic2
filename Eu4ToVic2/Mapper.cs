@@ -9,15 +9,15 @@ namespace Eu4ToVic2
 
 	public class Monarchy
 	{
-		public int MinAbsolutism { get; set; }
-		public int MaxAbsolutism { get; set; }
+		public float MinAbsolutism { get; set; }
+		public float MaxAbsolutism { get; set; }
 		public string ID { get; set; }
 		public Monarchy(PdxSublist monarchy)
 		{
 			ID = monarchy.Key;
 			if (monarchy.KeyValuePairs.ContainsKey("min_absolutism"))
 			{
-				MinAbsolutism = int.Parse(monarchy.KeyValuePairs["min_absolutism"]);
+				MinAbsolutism = monarchy.GetFloat("min_absolutism");
 			} else
 			{
 				MinAbsolutism = 0;
@@ -25,7 +25,7 @@ namespace Eu4ToVic2
 
 			if (monarchy.KeyValuePairs.ContainsKey("max_absolutism"))
 			{
-				MaxAbsolutism = int.Parse(monarchy.KeyValuePairs["max_absolutism"]);
+				MaxAbsolutism = monarchy.GetFloat("max_absolutism");
 			}
 			else
 			{
@@ -55,11 +55,11 @@ namespace Eu4ToVic2
 			var gov = MappingsFile("governmentMapping.txt");
 			Government = Mappings(gov);
 			Monarchies = new List<Monarchy>();
-			var monarchies = gov.Sublists["monarchies"];
-			foreach (var monarchy in monarchies.Sublists)
+			var monarchies = gov.GetSublist("monarchies");
+			monarchies.ForEachSublist(monarchy =>
 			{
 				Monarchies.Add(new Monarchy(monarchy.Value));
-			}
+			});
 		}
 
 		private Dictionary<string, string> Mappings(string filePath)
@@ -70,14 +70,14 @@ namespace Eu4ToVic2
 		private Dictionary<string, string> Mappings(PdxSublist mappings)
 		{
 			var map = new Dictionary<string, string>();
-			mappings.GetAllMatchingSublists("link", (lnk) =>
+			mappings.Sublists.ForEach("link", (lnk) =>
 			{
 
 				if (lnk.KeyValuePairs.Keys.All(key => key.Contains("eu4") || key.Contains("v2")))
 				{
-					lnk.GetAllMatchingKVPs("eu4", (eu4) =>
+					lnk.KeyValuePairs.ForEach("eu4", (eu4) =>
 					{
-						map.Add(eu4, lnk.KeyValuePairs["v2"]);
+						map.Add(eu4, lnk.GetString("v2"));
 					});
 				}
 			

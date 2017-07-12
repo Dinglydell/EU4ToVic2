@@ -56,10 +56,10 @@ namespace Eu4ToVic2
 
 		public Estate(PdxSublist estate)
 		{
-			Type = estate.GetStringValue("type");
-			Loyalty = float.Parse(estate.KeyValuePairs["loyalty"]);
-			Influence = float.Parse(estate.KeyValuePairs["influence"]);
-			Territory = float.Parse(estate.KeyValuePairs["territory"]);
+			Type = estate.GetString("type");
+			Loyalty = float.Parse(estate.GetString("loyalty"));
+			Influence = float.Parse(estate.GetString("influence"));
+			Territory = float.Parse(estate.GetString("territory"));
 		}
 	}
 
@@ -117,20 +117,21 @@ namespace Eu4ToVic2
 
 		public List<string> Policies { get; set; }
 		public bool IsColonialNation { get; private set; }
-
+		public List<int> Opinions { get; set; }
 		public Eu4Country(PdxSublist country, Eu4Save save)
 		{
 			CountryTag = country.Key;
+			Opinions = country.GetSublist("opinion_cache").Values.Select(int.Parse).ToList();
 			//Console.WriteLine($"Loading {CountryTag}...");
 			if (country.KeyValuePairs.ContainsKey("name"))
 			{
-				DisplayNoun = country.KeyValuePairs["name"].Replace("\"", string.Empty);
+				DisplayNoun = country.GetString("name").Replace("\"", string.Empty);
 			} else { 
 				DisplayNoun = save.Localisation[CountryTag];
 			}
 			if (country.KeyValuePairs.ContainsKey("adjective"))
 			{
-				DisplayAdj = country.KeyValuePairs["adjective"].Replace("\"", string.Empty);
+				DisplayAdj = country.GetString("adjective").Replace("\"", string.Empty);
 			}
 			else {
 				DisplayAdj = save.Localisation[$"{CountryTag}_ADJ"];
@@ -140,44 +141,44 @@ namespace Eu4ToVic2
 
 			if (country.KeyValuePairs.ContainsKey("overlord"))
 			{
-				Overlord = country.KeyValuePairs["overlord"].Replace("\"", string.Empty);
+				Overlord = country.GetString("overlord").Replace("\"", string.Empty);
 			}
 			if (country.KeyValuePairs.ContainsKey("liberty_desire"))
 			{
-				LibertyDesire = float.Parse(country.KeyValuePairs["liberty_desire"]);
+				LibertyDesire = float.Parse(country.GetString("liberty_desire"));
 			}
 			if (country.KeyValuePairs.ContainsKey("colonial_parent"))
 			{
 				IsColonialNation = true;
 			}
 
-			var institutions = country.Sublists["institutions"];
+			var institutions = country.GetSublist("institutions");
 			Institutions = institutions.Values.Select(ins => int.Parse(ins) == 1).ToList();
-			Capital = int.Parse(country.KeyValuePairs["capital"]);
-			var colours = country.Sublists["colors"];
-			var mapColour = colours.Sublists["map_color"];
+			Capital = int.Parse(country.GetString("capital"));
+			var colours = country.GetSublist("colors");
+			var mapColour = colours.GetSublist("map_color");
 			MapColour = new Colour(mapColour.Values);
 
-			PrimaryCulture = country.KeyValuePairs["primary_culture"];
+			PrimaryCulture = country.GetString("primary_culture");
 
 			AcceptedCultures = new List<string>();
 
-			country.GetAllMatchingKVPs("accepted_culture", (value) =>
+			country.KeyValuePairs.ForEach("accepted_culture", (value) =>
 			{
 				AcceptedCultures.Add(value);
 			});
 
-			Religion = country.KeyValuePairs["religion"];
+			Religion = country.GetString("religion");
 
-			GovernmentRank = byte.Parse(country.KeyValuePairs["government_rank"]);
+			GovernmentRank = byte.Parse(country.GetString("government_rank"));
 
-			var tech = country.Sublists["technology"];
-			AdmTech = byte.Parse(tech.KeyValuePairs["adm_tech"]);
-			DipTech = byte.Parse(tech.KeyValuePairs["dip_tech"]);
-			MilTech = byte.Parse(tech.KeyValuePairs["adm_tech"]);
+			var tech = country.GetSublist("technology");
+			AdmTech = (byte)tech.GetFloat("adm_tech");
+			DipTech = (byte)tech.GetFloat("dip_tech");
+			MilTech = (byte)tech.GetFloat("adm_tech");
 
 			Estates = new List<Estate>();
-			country.GetAllMatchingSublists("estate", (est) =>
+			country.Sublists.ForEach("estate", (est) =>
 			{
 				Estates.Add(new Estate(est));
 			});
@@ -189,13 +190,13 @@ namespace Eu4ToVic2
 
 			Prestige = LoadFloat(country, "prestige");
 
-			Stability = (sbyte)float.Parse(country.KeyValuePairs["stability"]);
+			Stability = (sbyte)country.GetFloat("stability");
 			Inflation = LoadFloat(country, "inflation");
 			
 
 			country.GetAllMatchingSublists("loan", (loan) =>
 			{
-				Debt += int.Parse(loan.KeyValuePairs["amount"]);
+				Debt += (int)loan.GetFloat("amount");
 			});
 
 			Absolutism = LoadFloat(country,"absolutism");
@@ -205,20 +206,20 @@ namespace Eu4ToVic2
 			Mercantilism = LoadFloat(country,"mercantilism");
 
 			Ideas = new Dictionary<string, byte>();
-			var ideas = country.Sublists["active_idea_groups"];
-			foreach(var idp in ideas.KeyValuePairs)
+			var ideas = country.GetSublist("active_idea_groups");
+			foreach (var idp in ideas.FloatValues)
 			{
-				Ideas.Add(idp.Key, byte.Parse(idp.Value));
+				Ideas.Add(idp.Key, (byte)idp.Value.Single());
 			}
 
-			Flags = country.Sublists["flags"].KeyValuePairs.Keys.ToList();
+			Flags = country.GetSublist("flags").KeyValuePairs.Keys.ToList();
 			Policies = new List<string>();
-			country.GetAllMatchingSublists("active_policy", (pol) =>
+			country.Sublists.ForEach("active_policy", (pol) =>
 			{
-				Policies.Add(pol.KeyValuePairs["policy"]);
+				Policies.Add(pol.GetString("policy"));
 			});
 
-			Government = country.KeyValuePairs["government"];
+			Government = country.GetString("government");
 			if (country.Key == "GBR")
 			{
 			//	Console.WriteLine(Institutions);
@@ -227,11 +228,11 @@ namespace Eu4ToVic2
 
 		private float LoadFloat(PdxSublist country, string key, float deflt = 0)
 		{
-			if (!country.KeyValuePairs.ContainsKey(key))
+			if (!country.FloatValues.ContainsKey(key))
 			{
 				return deflt;
 			}
-			return float.Parse(country.KeyValuePairs[key]);
+			return country.GetFloat(key);
 		}
 	}
 }

@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Eu4Culture.cs" />
+    <Compile Include="Eu4DiploRelation.cs" />
     <Compile Include="Eu4Religion.cs" />
     <Compile Include="Mapper.cs" />
     <Compile Include="Eu4Country.cs" />
@@ -56,6 +57,7 @@
     <Compile Include="ProvinceMapper.cs" />
     <Compile Include="Vic2Country.cs" />
     <Compile Include="Vic2Culture.cs" />
+    <Compile Include="Vic2DiploRelation.cs" />
     <Compile Include="Vic2Province.cs" />
     <Compile Include="Vic2Religion.cs" />
     <Compile Include="Vic2World.cs" />

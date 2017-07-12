@@ -28,7 +28,7 @@ namespace Eu4ToVic2
 		public PdxSublist GetData()
 		{
 			var data = new PdxSublist();
-			data.AddString("icon", Icon.ToString());
+			data.AddValue("icon", Icon.ToString());
 
 			var colourData = new PdxSublist();
 			colourData.Values.Add((Colour.Red / 255f).ToString());

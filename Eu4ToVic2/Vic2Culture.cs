@@ -61,13 +61,13 @@ namespace Eu4ToVic2
 			World = world;
 			Group = group;
 			Name = data.Key;
-			FirstNames = data.Sublists["first_names"].Values;
-			LastNames = data.Sublists["last_names"].Values;
-			Colour = new Colour(data.Sublists["color"].Values);
+			FirstNames = data.GetSublist("first_names").Values;
+			LastNames = data.GetSublist("last_names").Values;
+			Colour = new Colour(data.GetSublist("color").Values);
 			eu4Cultures = world.V2Mapper.Culture.Where(c => c.Value == Name).Select(s => world.Eu4Save.Cultures.ContainsKey(s.Key) ? world.Eu4Save.Cultures[s.Key] : null).Where(s => s != null).ToList();
 			if (data.KeyValuePairs.ContainsKey("primary"))
 			{
-				primaryKey = data.KeyValuePairs["primary"];
+				primaryKey = data.GetString("primary");
 
 			}
 			if (world.PrimaryNations)
@@ -78,9 +78,9 @@ namespace Eu4ToVic2
 
 		public void SetupPrimaryNation(Vic2World world)
 		{
-			if(world.CultureNations.Sublists["primary"].KeyValuePairs.ContainsKey(Name))
+			if(world.CultureNations.GetSublist("primary").KeyValuePairs.ContainsKey(Name))
 			{
-				var tag = world.CultureNations.Sublists["primary"].KeyValuePairs[Name];
+				var tag = world.CultureNations.GetSublist("primary").GetString(Name);
 				PrimaryNation = world.Vic2Countries.Find(c => c.CountryTag == tag) ?? new Vic2Country(world, tag, this);
 			} else if (primaryKey != null)
 			{
@@ -154,7 +154,7 @@ namespace Eu4ToVic2
 
 			if (PrimaryNation != null)
 			{
-				data.AddString("primary", PrimaryNation.CountryTag);
+				data.AddValue("primary", PrimaryNation.CountryTag);
 			}
 			return data;
 		}
@@ -164,7 +164,7 @@ namespace Eu4ToVic2
 			var nameData = new PdxSublist();
 			foreach (var name in names)
 			{
-				nameData.AddString(null, name);
+				nameData.AddValue(string.Empty, name);
 			}
 			return nameData;
 		}
@@ -200,20 +200,20 @@ namespace Eu4ToVic2
 		}
 		public Vic2CultureGroup(Vic2World world, PdxSublist data) : this(data.Key)
 		{
-			Leader = data.KeyValuePairs["leader"];
+			Leader = data.GetString("leader");
 			if (data.KeyValuePairs.ContainsKey("unit"))
 			{
-				Unit = data.KeyValuePairs["unit"];
+				Unit = data.GetString("unit");
 			}
 
-			foreach (var sub in data.Sublists)
+			data.ForEachSublist(sub =>
 			{
 				Cultures.Add(new Vic2Culture(world, sub.Value, this));
-			}
+			});
 
 			if (data.KeyValuePairs.ContainsKey("union"))
 			{
-				unionKey = data.KeyValuePairs["union"];
+				unionKey = data.GetString("union");
 			}
 		}
 
@@ -234,10 +234,10 @@ namespace Eu4ToVic2
 
 			var data = new PdxSublist(null, Name);
 
-			data.AddString("leader", Leader);
+			data.AddValue("leader", Leader);
 			if (Unit != null)
 			{
-				data.AddString("unit", Unit);
+				data.AddValue("unit", Unit);
 			}
 
 			foreach (var cul in Cultures)
@@ -247,7 +247,7 @@ namespace Eu4ToVic2
 
 			if (Union != null)
 			{
-				data.AddString("union", Union.CountryTag);
+				data.AddValue("union", Union.CountryTag);
 			}
 
 			return data;
@@ -255,9 +255,9 @@ namespace Eu4ToVic2
 
 		public void SetupUnionNation(Vic2World world)
 		{
-			if (world.CultureNations.Sublists["union"].KeyValuePairs.ContainsKey(Name))
+			if (world.CultureNations.GetSublist("union").KeyValuePairs.ContainsKey(Name))
 			{
-				var tag = world.CultureNations.Sublists["union"].KeyValuePairs[Name];
+				var tag = world.CultureNations.GetSublist("union").GetString(Name);
 				Union = world.Vic2Countries.Find(c => c.CountryTag == tag) ?? new Vic2Country(world, tag, this);
 			}  else if (unionKey != null)
 			{

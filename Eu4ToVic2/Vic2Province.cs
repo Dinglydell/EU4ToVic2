@@ -46,8 +46,8 @@ namespace Eu4ToVic2
 			FileName = Path.GetFileName(defaultProvince.Key);
 			Eu4Provinces = eu4Provinces;
 			ProvID = provID;
-			TradeGoods = defaultProvince.KeyValuePairs["trade_goods"];
-			LifeRating = int.Parse(defaultProvince.KeyValuePairs["life_rating"]);
+			TradeGoods = defaultProvince.GetString("trade_goods");
+			LifeRating = int.Parse(defaultProvince.GetString("life_rating"));
 			Pops = new PopPool(vic2World);
 			Factories = new HashSet<string>();
 			if (eu4Provinces.Count > 0)
@@ -100,26 +100,26 @@ namespace Eu4ToVic2
 			var file = new PdxSublist(null);
 			if (Owner != null)
 			{
-				file.AddString("owner", Owner.CountryTag);
-				file.AddString("controller", Owner.CountryTag);
+				file.AddValue("owner", Owner.CountryTag);
+				file.AddValue("controller", Owner.CountryTag);
 			}
 			if (Cores != null)
 			{
 				foreach (var core in Cores)
 				{
-					file.AddString("add_core", core.CountryTag);
+					file.AddValue("add_core", core.CountryTag);
 				}
 			}
-			file.AddString("trade_goods", TradeGoods);
-			file.AddString("fort", FortLevel.ToString());
+			file.AddValue("trade_goods", TradeGoods);
+			file.AddValue("fort", FortLevel.ToString());
 
 			foreach (var factory in Factories)
 			{
 				var factoryData = new PdxSublist();
 
-				factoryData.AddString("level", "1");
-				factoryData.AddString("building", factory);
-				factoryData.AddString("upgrade", "yes");
+				factoryData.AddValue("level", "1");
+				factoryData.AddValue("building", factory);
+				factoryData.AddValue("upgrade", "yes");
 
 				file.AddSublist("state_building", factoryData);
 			}
@@ -544,9 +544,9 @@ namespace Eu4ToVic2
 			foreach (var pop in Pops)
 			{
 				var popData = new PdxSublist(data, pop.Job);
-				popData.AddString("culture", pop.Culture);
-				popData.AddString("religion", pop.Religion);
-				popData.AddString("size", pop.Size.ToString());
+				popData.AddValue("culture", pop.Culture);
+				popData.AddValue("religion", pop.Religion);
+				popData.AddValue("size", pop.Size.ToString());
 				data.AddSublist(pop.Job, popData);
 			}
 			return data;
