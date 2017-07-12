@@ -93,6 +93,11 @@ namespace Eu4ToVic2
 			{
 				Pops.ReadData(vic2World.PopData.Sublists[provID.ToString()]);
 			}
+
+			if(ProvID == 300)
+			{
+				Console.WriteLine();
+			}
 		}
 
 		public PdxSublist GetProvinceData()
@@ -130,10 +135,10 @@ namespace Eu4ToVic2
 
 		public PdxSublist GetPopData()
 		{
-			if(Eu4Provinces.Count == 0)
-			{
-				return null;
-			}
+			//if(Eu4Provinces.Count == 0)
+			//{
+			//	return null;
+			//}
 			return Pops.GetData(ProvID);
 		}
 
@@ -240,7 +245,7 @@ namespace Eu4ToVic2
 				// estates
 				if (prov.Estate != null && vic2World.ProvinceEffects.Sublists["estate"].Sublists.ContainsKey(prov.Estate))
 				{
-					newCallback(vic2World.ProvinceEffects.Sublists["estate"].Sublists[prov.Estate].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value) / eu4Provinces.Count));
+					newCallback(vic2World.ProvinceEffects.Sublists["estate"].Sublists[prov.Estate].FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum() / eu4Provinces.Count));
 				}
 
 
@@ -251,7 +256,7 @@ namespace Eu4ToVic2
 					{
 						if (vic2World.ProvinceEffects.Sublists["province_flags"].Sublists.ContainsKey(flag))
 						{
-							newCallback(vic2World.ProvinceEffects.Sublists["province_flags"].Sublists[flag].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value) / eu4Provinces.Count));
+							newCallback(vic2World.ProvinceEffects.Sublists["province_flags"].Sublists[flag].FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum() / eu4Provinces.Count));
 						}
 					}
 				}
@@ -263,7 +268,7 @@ namespace Eu4ToVic2
 					{
 						if (vic2World.ProvinceEffects.Sublists["buildings"].Sublists.ContainsKey(build))
 						{
-							newCallback(vic2World.ProvinceEffects.Sublists["buildings"].Sublists[build].KeyValuePairs.ToDictionary(effect => effect.Key, effect => float.Parse(effect.Value) / eu4Provinces.Count));
+							newCallback(vic2World.ProvinceEffects.Sublists["buildings"].Sublists[build].FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum() / eu4Provinces.Count));
 						}
 					}
 

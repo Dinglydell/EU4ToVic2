@@ -603,7 +603,7 @@ namespace Eu4ToVic2
 						max = sub.GetFloat("maximum");
 					}
 
-					callback(sub.KeyValuePairs.ToDictionary(effect => effect.Key, effect => Math.Min(max, Math.Max(min, (value - average))) * float.Parse(effect.Value)));
+					callback(sub.FloatValues.ToDictionary(effect => effect.Key, effect => Math.Min(max, Math.Max(min, (value - average))) * effect.Value.Sum()));
 				});
 
 			}
