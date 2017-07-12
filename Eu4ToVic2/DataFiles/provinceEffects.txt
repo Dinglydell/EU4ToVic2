@@ -108,15 +108,10 @@ values = {
 		clergymen = 80
 		factory = 0.05
 	}
-	
-	
-	#adm_efficiency = {
-	#	relative_bureaucrats = 0.001
-	#}
 }
 
 # TODO:
-building = {
+buildings = {
 	workshop = {
 		relative_artisans = 0.01
 	}

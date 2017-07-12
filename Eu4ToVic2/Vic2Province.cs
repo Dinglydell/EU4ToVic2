@@ -94,10 +94,7 @@ namespace Eu4ToVic2
 				Pops.ReadData(vic2World.PopData.Sublists[provID.ToString()]);
 			}
 
-			if(ProvID == 300)
-			{
-				Console.WriteLine();
-			}
+			
 		}
 
 		public PdxSublist GetProvinceData()
@@ -161,6 +158,10 @@ namespace Eu4ToVic2
 
 		private void FinaliseFactoryEffects(Dictionary<string, float> factories, float baseFactories)
 		{
+			if (ProvID == 300)
+			{
+				Console.WriteLine();
+			}
 			var totalFactories = new Dictionary<string, float>();
 			foreach (var factory in factories)
 			{
@@ -184,8 +185,7 @@ namespace Eu4ToVic2
 
 		private float CalcFactoryEffects(Dictionary<string, float> effects, Eu4Province fromProvince, Dictionary<string, float> factories)
 		{
-			
-			foreach(var factory in World.Factories.Sublists["priority"].Values)
+			foreach (var factory in World.Factories.Sublists["priority"].Values)
 			{
 				if (effects.ContainsKey(factory))
 				{
@@ -196,9 +196,9 @@ namespace Eu4ToVic2
 					factories[factory] += effects[factory];
 				}
 			}
-			if (effects.ContainsKey("factories"))
+			if (effects.ContainsKey("factory"))
 			{
-				return effects["factories"];
+				return effects["factory"];
 			}
 			return 0;
 		}
@@ -260,7 +260,7 @@ namespace Eu4ToVic2
 						}
 					}
 				}
-
+			
 				// buildings
 				if (vic2World.ProvinceEffects.Sublists.ContainsKey("buildings"))
 				{
