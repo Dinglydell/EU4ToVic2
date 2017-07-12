@@ -6,7 +6,12 @@
 # 
 # relative_<poptype> = <value>
 # increases/decreases population with this job as a % of total province population - applied after all fixed value pop modifiers are applied
-
+#
+# factory = <value>
+# TODO: increases the number of factories
+#
+# <factory type> = <value>
+# TODO: increases the number of a specific factory. This value is added to the total factory value first.
 
 owner = {
 	# any category/subcategory from countryEffects.txt can be used here and will apply based on the province owner
@@ -16,6 +21,7 @@ values = {
 	base_tax = {
 		labourers = 10000
 		bureaucrats = 50
+		clergymen = 5
 	}
 	base_tax = {
 		average = 5
@@ -31,10 +37,26 @@ values = {
 		bureaucrats = 50
 		clergymen = 40
 	}
+	base_tax = {
+		average = 10
+		minimum = 0
+		aristocrats = 30
+		bureaucrats = 50
+		clergymen = 40
+	}
+	base_tax = {
+		average = 20
+		minimum = 0
+		aristocrats = 40
+		bureaucrats = 100
+		clergymen = 80
+		factory = 0.05
+	}
 	base_production = {
 		# doesn't matter if farmers or labourers, code automatically switches based on the RGO in the province
 		labourers = 12500
 		artisans = 1000
+		clergymen = 5
 	}
 	base_production = {
 		average = 5
@@ -51,9 +73,19 @@ values = {
 		capitalists = 50
 		clergymen = 40
 	}
+	base_production = {
+		average = 20
+		minimum = 0
+		artisans = 5000
+		aristocrats = 40
+		capitalists = 50
+		clergymen = 80
+		factory = 0.1
+	}
 	base_manpower = {
 		soldiers = 250
 		labourers = 1000
+		clergymen = 5
 	}
 	base_manpower = {
 		minimum = 0
@@ -62,10 +94,19 @@ values = {
 		clergymen = 20
 	}
 	base_manpower = {
-		# todo - minimum will mean any value below the minimum is treated as 0 - applied AFTER average
 		minimum = 0
 		average = 10
+		officers = 50
+		soldiers = 50
 		clergymen = 40
+	}
+	base_manpower = {
+		minimum = 0
+		average = 20
+		soldiers = 100
+		officers = 100
+		clergymen = 80
+		factory = 0.05
 	}
 	
 	
@@ -100,6 +141,8 @@ building = {
 	university = {
 		#literacy = 1
 		relative_clergymen = 0.01
+		relative_clerks = 0.001
+		factory = 0.4
 	}
 	
 	trade_depot = {
@@ -114,6 +157,7 @@ building = {
 	}
 	counting_house = {
 		relative_artisans = 0.02
+		factory = 0.4
 	}
 	town_hall = {
 		relative_bureaucrats = 0.02
@@ -123,22 +167,39 @@ building = {
 	}
 	
 	wharf = {
+		clipper_shipyard = 0.5
+		canned_food_factory = 0.5
+		steamer_shipyard = 0.5
 		relative_craftsmen = 0.02
 		relative_artisans = 0.005
+		
 	}
 	weapons = {
+		steel_factory = 0.5
+		ammunition_factory = 0.5
+		explosives_factory = 0.5
+		small_arms_factory = 0.5
 		relative_craftsmen = 0.02
 		relative_artisans = 0.005
 	}
 	textile = {
+		dye_factory = 0.5
+		fabric_factory = 0.5
+		luxury_clothes_factory = 0.5
+		regular_clothes_factory = 0.5
 		relative_craftsmen = 0.02
 		relative_artisans = 0.005
 	}
 	plantations = {
+		canned_food_factory = 0.5
+		liquor_distillery = 0.5
+		fertilizer_factory = 0.5
 		relative_craftsmen = 0.02
 		relative_artisans = 0.005
 	}
 	tradecompany = {
+		luxury_furniture_factory = 0.5
+		winery = 0.5
 		relative_craftsmen = 0.02
 		relative_artisans = 0.005
 	}

@@ -138,8 +138,8 @@ namespace Eu4ToVic2
 				Capital = 1;
 
 				PrimaryCulture = primaryCulture.Name;
-				DisplayNoun = world.LocalisationHelper.Sublists["culture_nation"].KeyValuePairs["noun"].Replace("%CULTURE%", primaryCulture.Name);
-                DisplayAdj = world.LocalisationHelper.Sublists["culture_nation"].KeyValuePairs["adj"].Replace("%CULTURE%", primaryCulture.Name);
+				DisplayNoun = world.LocalisationHelper.Sublists["culture_nation"].KeyValuePairs["noun"].Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
+                DisplayAdj = world.LocalisationHelper.Sublists["culture_nation"].KeyValuePairs["adj"].Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
 
 				AcceptedCultures = new List<string>();
 				PoliticalParties = new List<PoliticalParty>();

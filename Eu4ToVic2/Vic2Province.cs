@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Eu4ToVic2
@@ -25,7 +26,10 @@ namespace Eu4ToVic2
 
 		public int FortLevel { get; set; }
 
+		public HashSet<string> Factories { get; set; }
+
 		public PopPool Pops { get; set; }
+		public Vic2World World { get; private set; }
 
 		/// <summary>
 		/// 
@@ -37,6 +41,7 @@ namespace Eu4ToVic2
 		/// <param name="eu4Provinces">List of eu4 provinces mapped to this province</param>
 		public Vic2Province(int provID, PdxSublist defaultProvince, Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
 		{
+			World = vic2World;
 			Subfolder = Path.GetFileName(Path.GetDirectoryName(defaultProvince.Key));
 			FileName = Path.GetFileName(defaultProvince.Key);
 			Eu4Provinces = eu4Provinces;
@@ -44,6 +49,7 @@ namespace Eu4ToVic2
 			TradeGoods = defaultProvince.KeyValuePairs["trade_goods"];
 			LifeRating = int.Parse(defaultProvince.KeyValuePairs["life_rating"]);
 			Pops = new PopPool(vic2World);
+			Factories = new HashSet<string>();
 			if (eu4Provinces.Count > 0)
 			{
 				// most common owner
@@ -83,6 +89,9 @@ namespace Eu4ToVic2
 						Cores.Add(vic2World.Cultures[cul].Group.Union);
 					}
 				}
+			} else
+			{
+				Pops.ReadData(vic2World.PopData.Sublists[provID.ToString()]);
 			}
 		}
 
@@ -103,24 +112,90 @@ namespace Eu4ToVic2
 			}
 			file.AddString("trade_goods", TradeGoods);
 			file.AddString("fort", FortLevel.ToString());
+
+			foreach (var factory in Factories)
+			{
+				var factoryData = new PdxSublist();
+
+				factoryData.AddString("level", "1");
+				factoryData.AddString("building", factory);
+				factoryData.AddString("upgrade", "yes");
+
+				file.AddSublist("state_building", factoryData);
+			}
+
+
 			return file;
 		}
 
 		public PdxSublist GetPopData()
 		{
+			if(Eu4Provinces.Count == 0)
+			{
+				return null;
+			}
 			return Pops.GetData(ProvID);
 		}
 
 		private void CalcEffects(Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
 		{
+			var factories = new Dictionary<string, float>();
+			var baseFactories = 0f;
+			//Factories = new HashSet<string>();
 			IterateEffects(vic2World, siblingProvinces, eu4Provinces, (effects, fromProvince) =>
 			{
 				CalcPopEffects(effects, fromProvince);
+				baseFactories += CalcFactoryEffects(effects, fromProvince, factories);
 			});
 			IterateEffects(vic2World, siblingProvinces, eu4Provinces, (effects, fromProvince) =>
 			{
 				CalcRelativePopEffects(effects, fromProvince);
 			});
+			FinaliseFactoryEffects(factories, baseFactories);
+		}
+
+		private void FinaliseFactoryEffects(Dictionary<string, float> factories, float baseFactories)
+		{
+			var totalFactories = new Dictionary<string, float>();
+			foreach (var factory in factories)
+			{
+				totalFactories[factory.Key] = factory.Value + baseFactories;
+			}
+			totalFactories.OrderByDescending(f => f.Value);
+			foreach (var factory in totalFactories)
+			{
+				if(factory.Value < 1)
+				{
+					break;
+				}
+
+				if (Factories.Add(factory.Key))
+				{
+					FinaliseFactoryEffects(factories, baseFactories - 1);
+					break;
+				}
+			}
+		}
+
+		private float CalcFactoryEffects(Dictionary<string, float> effects, Eu4Province fromProvince, Dictionary<string, float> factories)
+		{
+			
+			foreach(var factory in World.Factories.Sublists["priority"].Values)
+			{
+				if (effects.ContainsKey(factory))
+				{
+					if (!factories.ContainsKey(factory))
+					{
+						factories[factory] = 0;
+					}
+					factories[factory] += effects[factory];
+				}
+			}
+			if (effects.ContainsKey("factories"))
+			{
+				return effects["factories"];
+			}
+			return 0;
 		}
 
 		private void CalcRelativePopEffects(Dictionary<string, float> effects, Eu4Province fromProvince)
@@ -477,10 +552,20 @@ namespace Eu4ToVic2
 			return data;
 		}
 
-		internal void IncreaseJob(PopType popType, float relativeAmount)
+		public void IncreaseJob(PopType popType, float relativeAmount)
 		{
 			var pops = SplitPops((int)(Pops.Sum(p => p.Size) * relativeAmount), Pops, c => c, r => r);
 			pops.ForEach(AddPop);
+		}
+
+		public void ReadData(PdxSublist data)
+		{
+			var rgx = new Regex(@"\d+$");
+			foreach (var pop in data.Sublists)
+			{
+				var key = rgx.Replace(pop.Key, string.Empty);
+				AddPop((PopType)Enum.Parse(typeof(PopType), key), int.Parse(pop.Value.KeyValuePairs["size"]), pop.Value.KeyValuePairs["culture"], pop.Value.KeyValuePairs["religion"]);
+			}
 		}
 	}
 	/// <summary>

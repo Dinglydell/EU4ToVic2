@@ -156,7 +156,7 @@ link = { v2 = slovak eu4 = slovak }
 link = { v2 = czech eu4 = czech }
 
 # East Slav - russian, byelorussian, ruthenian
-link = { v2 = russian eu4 = russian eu4 = ilmenian eu4 = severian eu4 = volhynian eu4 = novgorodian eu4 = ryazanian }
+link = { v2 = russian eu4 = russian eu4 = ilmenian eu4 = severian eu4 = volhynian eu4 = novgorodian eu4 = ryazanian eu4 = russian_culture }
 link = { v2 = ukrainian eu4 = ruthenian }
 link = { v2 = byelorussian eu4 = byelorussian }
 

@@ -7,7 +7,7 @@ all_italian = ITA
 # sets nations as primary nation of a culture
 # this will be default have the effect of giving provinces with this culture a core
 primary = {
-	french = FRA
+	#french = FRA
 	serb = SER
 	greek = GRE
 	persian = PER
@@ -17,6 +17,8 @@ primary = {
 
 # sets union nation of a culture group
 union = {
+	french = FRA
 	# should happen autmatically
 	#italian = ITA
+	
 }

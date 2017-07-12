@@ -93,11 +93,11 @@ namespace Eu4ToVic2
 
 		internal void WriteToFile(StreamWriter file, int indentation = 0)
 		{
-			if(KeyValuePairs.Count != 0 || Sublists.Count != 0 || KeylessSublists.Count != 0)
+			if (KeyValuePairs.Count != 0 || Sublists.Count != 0 || KeylessSublists.Count != 0)
 			{
 				file.WriteLine();
 			}
-			
+
 			//using (var file = File.CreateText(path))
 			//{
 
@@ -105,7 +105,7 @@ namespace Eu4ToVic2
 			var rgx = new Regex(@"\d+$");
 			foreach (var kvp in KeyValuePairs)
 			{
-				var newKey =  rgx.Replace(kvp.Key, string.Empty);
+				var newKey = rgx.Replace(kvp.Key, string.Empty);
 				if (!KeyValuePairs.ContainsKey(newKey))
 				{
 					newKey = kvp.Key;
@@ -171,8 +171,158 @@ namespace Eu4ToVic2
 			return new DateTime(dateParts[0], dateParts[1], dateParts[2]);
 		}
 
-
 		public static PdxSublist ReadFile(string filePath, string firstLine = null)
+		{
+			var rootList = new PdxSublist(null, filePath);
+			var currentList = rootList;
+			using (var file = new StreamReader(filePath, Encoding.Default))
+			{
+
+				if (firstLine != null)
+				{
+					var line = file.ReadLine();
+					if (line != firstLine)
+					{
+						throw new Exception("Not a valid file");
+					}
+
+				}
+				char ch;
+				State = ReadState.preKey;
+
+				var inQuotes = false;
+				var key = new StringBuilder();
+				var value = new StringBuilder();
+				//var total = new StringBuilder();
+				var prevState = State;
+				while (!file.EndOfStream)
+				{
+					
+					ch = Convert.ToChar(file.Read());
+					//total.Append(ch);
+					if(State == ReadState.comment) {
+						if (Environment.NewLine.Contains(ch))
+						{
+							State = prevState;
+						}
+						continue;
+					}
+					if (!inQuotes)
+					{
+						if (ch == '#')
+						{
+							prevState = State;
+							State = ReadState.comment;
+							continue;
+						}
+							if (ch == '{')
+						{
+							Terminate(currentList, key, value, ch);
+							// open sublist
+							
+							var sub = new PdxSublist(currentList, State == ReadState.preValue ? key.ToString() : null);
+							key = new StringBuilder();
+							value = new StringBuilder();
+							currentList = sub;
+							State = ReadState.preKey;
+							continue;
+						}
+						if (ch == '=')
+						{
+							// expecting next non-whitespace character to be the start of the key
+							State = ReadState.preValue;
+							continue;
+						}
+						if (ch == '}')
+						{
+							// end of sublist, go up a level
+							Terminate(currentList, key, value, ch);
+
+							key = new StringBuilder();
+							value = new StringBuilder();
+							currentList.Parent.AddSublist(currentList.Key, currentList);
+							currentList = currentList.Parent;
+							State = ReadState.preKey;
+							continue;
+						}
+
+						if (char.IsWhiteSpace(ch))
+						{
+							if(State == ReadState.value)
+							{
+								//append to list
+								currentList.AddString(key.ToString(), value.ToString());
+								key = new StringBuilder();
+								value = new StringBuilder();
+								State = ReadState.preKey;
+
+							} else if(State == ReadState.key)
+							{
+								// no longer reading the key, expecting = or a new value if list
+								State = ReadState.postKey;
+							}
+							continue;
+						} else if(State == ReadState.preValue)
+						{
+							
+							State = ReadState.value;
+						} else if(State == ReadState.postKey)
+						{
+							//this must be a list
+							currentList.AddString(null, key.ToString());
+							key = new StringBuilder();
+							State = ReadState.key;
+						} else if(State == ReadState.preKey)
+						{
+							State = ReadState.key;
+						}
+						
+						
+					}
+					if (ch == '"')
+					{
+						inQuotes = !inQuotes;
+						continue;
+					}
+					if (State == ReadState.key)
+					{
+						key.Append(ch);
+					}
+					if(State == ReadState.value)
+					{
+						value.Append(ch);
+					}
+				}
+				Terminate(currentList, key, value);
+			}
+			if (currentList != rootList)
+			{
+				throw new Exception("An unknown error occurred.");
+			}
+			return rootList;
+		}
+
+		private static void Terminate(PdxSublist currentList, StringBuilder key, StringBuilder value, char? ch = null)
+		{
+			switch (State)
+			{
+				//determine what to do about current thing
+				case ReadState.key:
+				case ReadState.postKey:
+					currentList.AddString(null, key.ToString());
+					break;
+				case ReadState.value:
+					currentList.AddString(key.ToString(), value.ToString());
+					break;
+				case ReadState.preValue: case ReadState.preKey: case ReadState.comment:
+					break;
+				default:
+					var unexpected = ch.HasValue ? ch.Value.ToString() : "EoF";
+					throw new Exception($"Syntax error:  Unexcepted '{unexpected}'");
+			}
+		}
+
+		public static PdxSublist ReadFileOld(string filePath, string firstLine = null)
 		{
 			State = ReadState.normal;
 			//TODO: write a much more sophisticated file reader
@@ -193,7 +343,7 @@ namespace Eu4ToVic2
 			while ((line = file.ReadLine()) != null)
 			{
 				lineNumber++;
-				if(lineNumber == 1513567)
+				if (lineNumber == 1513567)
 				{
 					Console.WriteLine("Oh");
 				}
@@ -249,16 +399,16 @@ namespace Eu4ToVic2
 			if (value.Contains('}'))
 			{
 				parent = value.Count(c => c == '}');
-				
-				
+
+
 				value = value.Substring(0, value.IndexOf('}')).Trim();
-				
+
 			}
 
 			if (value.FirstOrDefault() == '{')
 			{
 				var list = new PdxSublist(currentList, key);
-				
+
 				if (line.Contains('}'))
 				{
 					if (line.IndexOf('}') < line.IndexOf('{'))
@@ -367,7 +517,7 @@ namespace Eu4ToVic2
 			var nextVal = new StringBuilder();
 			foreach (var ch in value)
 			{
-				if(ch == '}')
+				if (ch == '}')
 				{
 					break;
 				}
@@ -380,7 +530,7 @@ namespace Eu4ToVic2
 					nextVal = new StringBuilder();
 					continue;
 				}
-				if(ch == '"')
+				if (ch == '"')
 				{
 					inQuotes = !inQuotes;
 					continue;
@@ -422,7 +572,8 @@ namespace Eu4ToVic2
 
 		enum ReadState
 		{
-			normal, value
+			normal, key, value, preValue, preKey,
+			postKey, comment
 		}
 	}
 }

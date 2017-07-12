@@ -32,7 +32,10 @@ namespace Eu4ToVic2
 
 			
 			LastNames = eu4Cultures[0].DynastyNames;
-			
+			if (vic2World.PrimaryNations)
+			{
+				SetupPrimaryNation(vic2World);
+			}
 		}
 
 		private bool isUnique(int r, int g, int b, byte threshhold)
@@ -66,6 +69,10 @@ namespace Eu4ToVic2
 			{
 				primaryKey = data.KeyValuePairs["primary"];
 
+			}
+			if (world.PrimaryNations)
+			{
+				SetupPrimaryNation(world);
 			}
 		}
 
@@ -121,6 +128,11 @@ namespace Eu4ToVic2
 					}
 					Colour = new Colour(r, g, b);
 				}
+
+				if(PrimaryNation != null && PrimaryNation.MapColour == null)
+				{
+					PrimaryNation.MapColour = Colour;
+				}
 			}
 		}
 
@@ -159,7 +171,7 @@ namespace Eu4ToVic2
 
 		public void AddLocalisation(Dictionary<string, string> localisation)
 		{
-			if (DisplayName != null)
+			if (DisplayName != null && !localisation.ContainsKey(Name))
 			{
 				localisation.Add(Name, DisplayName);
 			}

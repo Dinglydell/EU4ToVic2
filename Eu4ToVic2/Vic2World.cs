@@ -41,6 +41,9 @@ namespace Eu4ToVic2
 		internal Dictionary<string, Vic2CultureGroup> CultureGroups { get; private set; }
 		public Dictionary<string, Vic2Culture> Cultures { get; private set; }
 		public int NumCultureNations { get; internal set; }
+		public bool PrimaryNations { get; internal set; }
+		public PdxSublist PopData { get; private set; }
+		public PdxSublist Factories { get; private set; }
 
 		public Vic2World(Eu4Save eu4Save)
 		{
@@ -51,10 +54,12 @@ namespace Eu4ToVic2
 			ProvMapper = new ProvinceMapper("province_mappings.txt");
 			LoadLocalisationHelper();
 			LoadEffects();
+			LoadFactories();
 			LoadPoliticalParties();
 			LoadVicTech();
 			LoadVicReligion();
 			LoadVicCulture();
+			LoadVicPopData();
 			LoadExistingCountries();
 			Console.WriteLine("Constructing Vic2 world...");
 			GenerateCountries();
@@ -70,6 +75,25 @@ namespace Eu4ToVic2
 			CreateCultureFile();
 			CreatLocalisationFiles();
 			Console.WriteLine("Done!");
+		}
+
+		private void LoadFactories()
+		{
+			Factories = PdxSublist.ReadFile("factory.txt");
+		}
+
+		private void LoadVicPopData()
+		{
+			PopData = new PdxSublist();
+			var files = Directory.GetFiles(Path.Combine(VIC2_DIR, @"history\pops\1836.1.1"));
+			foreach (var file in files)
+			{
+				var data = PdxSublist.ReadFile(file);
+				foreach (var sub in data.Sublists)
+				{
+					PopData.Sublists[sub.Key] = sub.Value;
+				}
+			}
 		}
 
 		private void LoadLocalisationHelper()
@@ -122,7 +146,7 @@ namespace Eu4ToVic2
 			{
 				culture.Value.SetupPrimaryNation(this);
 			}
-
+			PrimaryNations = true;
 			
 		}
 
@@ -206,8 +230,10 @@ namespace Eu4ToVic2
 			foreach (var province in Vic2Provinces)
 			{
 				var pop = province.GetPopData();
-				pop.Parent = pops;
-				pops.AddSublist(province.ProvID.ToString(), pop);
+				if (pop != null)
+				{
+					pops.AddSublist(province.ProvID.ToString(), pop);
+				}
 			}
 			using (var file = File.CreateText(Path.Combine(startDir.FullName, "1836.txt")))
 			{
@@ -378,7 +404,7 @@ namespace Eu4ToVic2
 			foreach (var prov in provs)
 			{
 				var v2Prov = FindProvinceFile(prov.Key);
-				if (v2Prov != null && prov.Value.Count > 0)
+				if (v2Prov != null)
 				{
 					Vic2Provinces.Add(new Vic2Province(prov.Key, v2Prov, this, provs.Count(p => prov.Value.All(p.Value.Contains)), prov.Value));
 				}
