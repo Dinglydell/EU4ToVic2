@@ -289,8 +289,6 @@ link = { v2 = kachin eu4 = kachin }
 link = { v2 = karen eu4 = karen }
 
 # Pacific - papuan, aboriginal, melanesian, moluccan
-link = { v2 = hawaiian eu4 = polynesian provinceid = 1240 }
-link = { v2 = hawaiian eu4 = polynesian provinceid = 1997 }
 link = { v2 = maori eu4 = polynesian region = new_zealand_region }
 link = { v2 = aborigine eu4 = aboriginal }
 link = { v2 = melanesian eu4 = melanesian eu4 = papuan }

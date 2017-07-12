@@ -47,7 +47,7 @@ namespace Eu4ToVic2
 			Eu4Provinces = eu4Provinces;
 			ProvID = provID;
 			TradeGoods = defaultProvince.GetString("trade_goods");
-			LifeRating = int.Parse(defaultProvince.GetString("life_rating"));
+			LifeRating = (int)defaultProvince.GetFloat("life_rating");
 			Pops = new PopPool(vic2World);
 			Factories = new HashSet<string>();
 			if (eu4Provinces.Count > 0)
@@ -564,7 +564,7 @@ namespace Eu4ToVic2
 			foreach (var pop in data.Sublists)
 			{
 				var key = rgx.Replace(pop.Key, string.Empty);
-				AddPop((PopType)Enum.Parse(typeof(PopType), key), int.Parse(pop.Value.KeyValuePairs["size"]), pop.Value.KeyValuePairs["culture"], pop.Value.KeyValuePairs["religion"]);
+				AddPop((PopType)Enum.Parse(typeof(PopType), key), (int)pop.Value.GetFloat("size"), pop.Value.KeyValuePairs["culture"], pop.Value.KeyValuePairs["religion"]);
 			}
 		}
 	}

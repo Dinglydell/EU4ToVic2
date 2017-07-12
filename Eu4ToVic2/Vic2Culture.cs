@@ -22,8 +22,10 @@ namespace Eu4ToVic2
 
 		public Vic2Culture(string eu4Name, Vic2World vic2World, string vic2Name, Vic2CultureGroup group)
 		{
+			
 			Group = group;
 			Name = vic2Name;
+	
 			World = vic2World;
 			eu4Cultures = new List<Eu4Culture>();
 			eu4Cultures.Add(vic2World.Eu4Save.Cultures[eu4Name]);
@@ -58,12 +60,14 @@ namespace Eu4ToVic2
 
 		public Vic2Culture(Vic2World world, PdxSublist data, Vic2CultureGroup group)
 		{
+			
 			World = world;
 			Group = group;
 			Name = data.Key;
+			DisplayName = world.VanillaLocalisation[Name];
 			FirstNames = data.GetSublist("first_names").Values;
 			LastNames = data.GetSublist("last_names").Values;
-			Colour = new Colour(data.GetSublist("color").Values);
+			Colour = new Colour(data.GetSublist("color").FloatValues[string.Empty]);
 			eu4Cultures = world.V2Mapper.Culture.Where(c => c.Value == Name).Select(s => world.Eu4Save.Cultures.ContainsKey(s.Key) ? world.Eu4Save.Cultures[s.Key] : null).Where(s => s != null).ToList();
 			if (data.KeyValuePairs.ContainsKey("primary"))
 			{
@@ -142,9 +146,9 @@ namespace Eu4ToVic2
 
 
 			var colourData = new PdxSublist();
-			colourData.Values.Add((Colour.Red / 255f).ToString());
-			colourData.Values.Add((Colour.Green / 255f).ToString());
-			colourData.Values.Add((Colour.Blue / 255f).ToString());
+			colourData.AddValue((Colour.Red / 255f).ToString());
+			colourData.AddValue((Colour.Green / 255f).ToString());
+			colourData.AddValue((Colour.Blue / 255f).ToString());
 			data.AddSublist("color", colourData);
 
 			data.AddSublist("first_names", GetNameData(FirstNames));
@@ -267,7 +271,7 @@ namespace Eu4ToVic2
 
 		public void AddLocalisation(Dictionary<string, string> localisation)
 		{
-			if (DisplayName != null)
+			if (DisplayName != null && !localisation.ContainsKey(Name))
 			{
 				localisation.Add(Name, DisplayName);
 			}

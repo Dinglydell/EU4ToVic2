@@ -20,26 +20,26 @@ namespace Eu4ToVic2
 		}
 
 
-		public Colour(List<string> rgb) 
+		public Colour(List<float> rgb) 
 		{
 			
 			byte r;
 			byte g;
 			byte b;
-			if(byte.TryParse(rgb[0], out r) && byte.TryParse(rgb[1], out g) && byte.TryParse(rgb[2], out b))
+			if(byte.TryParse(rgb[0].ToString(), out r) && byte.TryParse(rgb[1].ToString(), out g) && byte.TryParse(rgb[2].ToString(), out b))
 			{
 				Red = r;
 				Green = g;
 				Blue = b;
 			} else
 			{
-				Red = (byte)(float.Parse(rgb[0]) * 255);
-				Green = (byte)(float.Parse(rgb[1]) * 255);
-				Blue = (byte)(float.Parse(rgb[2]) * 255);
+				Red = (byte)(rgb[0] * 255);
+				Green = (byte)(rgb[1] * 255);
+				Blue = (byte)(rgb[2] * 255);
 			}
 		}
 
-		public Colour(List<string> rgb, byte multiplier): this((byte)(multiplier * float.Parse(rgb[0])), (byte)(multiplier * float.Parse(rgb[1])), (byte)(multiplier * float.Parse(rgb[2])))
+		public Colour(List<float> rgb, byte multiplier): this((byte)(multiplier * rgb[0]), (byte)(multiplier * rgb[1]), (byte)(multiplier * rgb[2]))
 		{
 
 		}
@@ -57,9 +57,9 @@ namespace Eu4ToVic2
 		public Estate(PdxSublist estate)
 		{
 			Type = estate.GetString("type");
-			Loyalty = float.Parse(estate.GetString("loyalty"));
-			Influence = float.Parse(estate.GetString("influence"));
-			Territory = float.Parse(estate.GetString("territory"));
+			Loyalty = estate.GetFloat("loyalty");
+			Influence = estate.GetFloat("influence");
+			Territory = estate.GetFloat("territory");
 		}
 	}
 
@@ -153,11 +153,11 @@ namespace Eu4ToVic2
 			}
 
 			var institutions = country.GetSublist("institutions");
-			Institutions = institutions.Values.Select(ins => int.Parse(ins) == 1).ToList();
-			Capital = int.Parse(country.GetString("capital"));
+			Institutions = institutions.FloatValues[string.Empty].Select(ins => ins == 1).ToList();
+			Capital = (int)country.GetFloat("capital");
 			var colours = country.GetSublist("colors");
 			var mapColour = colours.GetSublist("map_color");
-			MapColour = new Colour(mapColour.Values);
+			MapColour = new Colour(mapColour.FloatValues[string.Empty]);
 
 			PrimaryCulture = country.GetString("primary_culture");
 
@@ -170,7 +170,7 @@ namespace Eu4ToVic2
 
 			Religion = country.GetString("religion");
 
-			GovernmentRank = byte.Parse(country.GetString("government_rank"));
+			GovernmentRank = (byte)country.GetFloat("government_rank");
 
 			var tech = country.GetSublist("technology");
 			AdmTech = (byte)tech.GetFloat("adm_tech");

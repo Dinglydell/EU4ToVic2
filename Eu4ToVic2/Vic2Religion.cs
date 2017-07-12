@@ -21,8 +21,8 @@ namespace Eu4ToVic2
 		public Vic2Religion(PdxSublist data)
 		{
 			Name = data.Key;
-			Icon = int.Parse(data.KeyValuePairs["icon"]);
-			Colour = new Colour(data.Sublists["color"].Values, 255);
+			Icon = (int)data.GetFloat("icon");
+			Colour = new Colour(data.Sublists["color"].FloatValues[string.Empty], 255);
 		}
 
 		public PdxSublist GetData()
@@ -31,9 +31,9 @@ namespace Eu4ToVic2
 			data.AddValue("icon", Icon.ToString());
 
 			var colourData = new PdxSublist();
-			colourData.Values.Add((Colour.Red / 255f).ToString());
-			colourData.Values.Add((Colour.Green / 255f).ToString());
-			colourData.Values.Add((Colour.Blue / 255f).ToString());
+			colourData.AddValue((Colour.Red / 255f).ToString());
+			colourData.AddValue((Colour.Green / 255f).ToString());
+			colourData.AddValue((Colour.Blue / 255f).ToString());
 			data.AddSublist("color", colourData);
 			return data;
 		}

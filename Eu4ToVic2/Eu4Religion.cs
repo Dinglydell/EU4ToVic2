@@ -13,7 +13,7 @@ namespace Eu4ToVic2
 		public Eu4Religion(PdxSublist data, Eu4ReligionGroup group, Eu4Save save)
 		{
 			Group = group;
-			Colour = new Colour(data.GetSublist("color").Values);
+			Colour = new Colour(data.GetSublist("color").FloatValues[string.Empty]);
 			Icon = (int)data.GetFloat("icon");
 			DisplayName = save.Localisation[data.Key];
 		}

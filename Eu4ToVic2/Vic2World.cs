@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace Eu4ToVic2
 {
@@ -48,6 +49,8 @@ namespace Eu4ToVic2
 		public List<Vic2DiploRelation> Alliances { get; set; }
 		public List<Vic2DiploRelation> Puppets { get; set; }
 
+		public Dictionary<string, string> VanillaLocalisation { get; set; }
+
 		public Vic2World(Eu4Save eu4Save)
 		{
 
@@ -55,6 +58,7 @@ namespace Eu4ToVic2
 			ReligiousGroups = new Dictionary<string, Vic2ReligionGroup>();
 			V2Mapper = new Mapper(this);
 			ProvMapper = new ProvinceMapper("province_mappings.txt");
+			LoadVanillaLocalisation();
 			LoadLocalisationHelper();
 			LoadEffects();
 			LoadFactories();
@@ -79,6 +83,77 @@ namespace Eu4ToVic2
 			CreateDiplomacyFiles();
 			CreatLocalisationFiles();
 			Console.WriteLine("Done!");
+		}
+
+		private void LoadVanillaLocalisation()
+		{
+			Console.WriteLine("Loading EU4 localisation...");
+			VanillaLocalisation = new Dictionary<string, string>();
+			var files = Directory.GetFiles(Path.Combine(VIC2_DIR, "localisation"));
+			foreach (var file in files)
+			{
+
+				LoadLocalisationFile(file);
+
+			}
+		}
+
+		private void LoadLocalisationFile(string path)
+		{
+			using (var file = new StreamReader(path))
+			{
+
+
+				var key = new StringBuilder();
+				var value = new StringBuilder();
+				var readKey = true;
+				var readValue = false;
+				//var inQuotes = false;
+				while (!file.EndOfStream)
+				{
+					var ch = Convert.ToChar(file.Read());
+
+					if (ch == ';')
+					{
+						if (readValue)
+						{
+							readValue = false;
+						}
+						if (readKey)
+						{
+							readKey = false;
+							readValue = true;
+						}
+						
+						continue;
+					}
+					if (Environment.NewLine.Contains(ch))
+					{
+						readValue = false;
+						readKey = true;
+						if (key.Length > 0 && value.Length > 0 && !VanillaLocalisation.ContainsKey(key.ToString()))
+						{
+							VanillaLocalisation.Add(key.ToString(), value.ToString());
+						}
+						key = new StringBuilder();
+						value = new StringBuilder();
+						continue;
+					}
+
+					if (readKey)
+					{
+						key.Append(ch);
+					}
+					if (readValue)
+					{
+						value.Append(ch);
+					}
+				}
+				if (key.Length > 0 && value.Length > 0)
+				{
+					VanillaLocalisation.Add(key.ToString(), value.ToString());
+				}
+			}
 		}
 
 		private void CreateDiplomacyFiles()
@@ -115,10 +190,11 @@ namespace Eu4ToVic2
 			foreach (var eu4Relation in Eu4Save.Relations)
 			{
 				var v = new Vic2DiploRelation(eu4Relation, this);
-				if(v.Type == V2Relation.alliance)
+				if (v.Type == V2Relation.alliance)
 				{
 					Alliances.Add(v);
-				} else if(v.Type == V2Relation.vassal)
+				}
+				else if (v.Type == V2Relation.vassal)
 				{
 					Puppets.Add(v);
 				}
@@ -195,14 +271,14 @@ namespace Eu4ToVic2
 				culture.Value.SetupPrimaryNation(this);
 			}
 			PrimaryNations = true;
-			
+
 		}
 
 		private void LoadExistingCountries()
 		{
 			ExistingCountries = new HashSet<string>();
 			var countries = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"common\countries.txt"));
-			foreach(var c in countries.KeyValuePairs.Keys)
+			foreach (var c in countries.KeyValuePairs.Keys)
 			{
 				ExistingCountries.Add(c);
 			}
@@ -232,7 +308,7 @@ namespace Eu4ToVic2
 			foreach (var rel in ReligiousGroups)
 			{
 				data.AddSublist(rel.Key, rel.Value.GetData());
-				
+
 			}
 			using (var file = File.CreateText(Path.Combine(OUTPUT, @"common\religion.txt")))
 			{
@@ -289,7 +365,7 @@ namespace Eu4ToVic2
 			}
 		}
 
-		
+
 
 		private void CreateProvinceFiles()
 		{
@@ -311,11 +387,11 @@ namespace Eu4ToVic2
 
 		private void CreateModFolders()
 		{
-			
+
 			if (Directory.Exists(OUTPUT))
 			{
 				DeleteDir(OUTPUT);
-				
+
 			}
 			Directory.CreateDirectory(OUTPUT);
 			Directory.CreateDirectory(Path.Combine(OUTPUT, "common"));
@@ -325,10 +401,12 @@ namespace Eu4ToVic2
 
 		private void DeleteDir(string path)
 		{
-			foreach(var dir in Directory.GetDirectories(path)) {
+			foreach (var dir in Directory.GetDirectories(path))
+			{
 				DeleteDir(dir);
 			}
-			foreach(var file in Directory.GetFiles(path)){
+			foreach (var file in Directory.GetFiles(path))
+			{
 				File.Delete(file);
 			}
 			Directory.Delete(path, true);
@@ -347,7 +425,7 @@ namespace Eu4ToVic2
 
 		public string GenerateCulture(string eu4Culture, string vic2Name = null)
 		{
-			if(vic2Name == null)
+			if (vic2Name == null)
 			{
 				vic2Name = eu4Culture;
 			}
@@ -379,7 +457,7 @@ namespace Eu4ToVic2
 					var genCtry = Vic2Countries.Find(c => c.CountryTag == ctry.Key);
 					if (genCtry == null)
 					{
-						txtFile.WriteLine($"{ctry.Key} = {ctry.Value}");
+						txtFile.WriteLine($"{ctry.Key} = \"{ctry.Value}\"");
 					}
 				}
 
@@ -422,29 +500,35 @@ namespace Eu4ToVic2
 			Console.WriteLine("Mapping provinces...");
 			Vic2Provinces = new List<Vic2Province>();
 			var provs = new Dictionary<int, List<Eu4Province>>();
-			ProvMapper.Mappings.Sublists["mappings"].GetAllMatchingSublists("link", (lnk) =>
+			ProvMapper.Mappings.Sublists["mappings"].Sublists.Every("link").ForEach((lnk) =>
 			{
 				var eu4Provs = new List<Eu4Province>();
-				lnk.GetAllMatchingKVPs("eu4", (eu4Prov) =>
+				if (lnk.FloatValues.ContainsKey("eu4"))
 				{
-					var eu4 = int.Parse(eu4Prov);
-					if (Eu4Save.Provinces.ContainsKey(eu4))
+					lnk.FloatValues["eu4"].ForEach((eu4Prov) =>
 					{
-						eu4Provs.Add(Eu4Save.Provinces[eu4]);
-					}
-				});
-				lnk.GetAllMatchingKVPs("v2", (v2Prov) =>
+						var eu4 = (int)eu4Prov;
+						if (Eu4Save.Provinces.ContainsKey(eu4))
+						{
+							eu4Provs.Add(Eu4Save.Provinces[eu4]);
+						}
+					});
+				}
+				if (lnk.FloatValues.ContainsKey("v2"))
 				{
-					var v2 = int.Parse(v2Prov);
-					if (provs.ContainsKey(v2))
+					lnk.FloatValues["v2"].ForEach((v2Prov) =>
 					{
-						provs[v2].AddRange(eu4Provs);
-					}
-					else {
-						provs[v2] = new List<Eu4Province>(eu4Provs);
-					}
+						var v2 = (int)v2Prov;
+						if (provs.ContainsKey(v2))
+						{
+							provs[v2].AddRange(eu4Provs);
+						}
+						else {
+							provs[v2] = new List<Eu4Province>(eu4Provs);
+						}
 
-				});
+					});
+				}
 			});
 
 
@@ -462,15 +546,10 @@ namespace Eu4ToVic2
 		}
 		public int GetBestVic2ProvinceMatch(int eu4ProvID)
 		{
-			return int.Parse(ProvMapper.Mappings.Sublists["mappings"].Sublists.First(s =>
+			return (int)ProvMapper.Mappings.Sublists["mappings"].Sublists.Every("link").First(s =>
 			{
-				var found = false;
-				s.Value.GetAllMatchingKVPs("eu4", prov =>
-				{
-					found |= prov == eu4ProvID.ToString();
-				});
-				return found;
-			}).Value.KeyValuePairs["v2"]);
+				return s.FloatValues.ContainsKey("eu4") ? s.FloatValues["eu4"].Any(prov => prov == eu4ProvID) : false;
+			}).FloatValues["v2"].First();
 		}
 
 		private PdxSublist FindProvinceFile(int key)
@@ -491,7 +570,7 @@ namespace Eu4ToVic2
 
 		public Vic2Country GetCountry(Eu4Country eu4Country)
 		{
-			if(eu4Country == null)
+			if (eu4Country == null)
 			{
 				return null;
 			}

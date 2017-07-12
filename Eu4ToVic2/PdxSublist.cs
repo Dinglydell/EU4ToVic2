@@ -87,7 +87,7 @@ namespace Eu4ToVic2
 			if (float.TryParse(value, out f))
 			{
 				AddValue(FloatValues, key, f);
-
+				return;
 			}
 
 			AddValue(keyValuePairs, key, value);
@@ -162,7 +162,7 @@ namespace Eu4ToVic2
 			}
 			foreach (var kvp in BoolValues)
 			{
-				Write(file, indentation, kvp);
+				Write(file, indentation, kvp, b => b ? "yes" : "no");
 			}
 			foreach (var kvp in FloatValues)
 			{
@@ -195,19 +195,30 @@ namespace Eu4ToVic2
 			}
 			//}
 		}
-
 		private void Write<T>(StreamWriter file, int indentation, KeyValuePair<string, List<T>> kvp)
 		{
-
+			Write(file, indentation, kvp, v => v?.ToString());
+		}
+		private void Write<T>(StreamWriter file, int indentation, KeyValuePair<string, List<T>> kvp, Func<T, string> callback)
+		{
 			kvp.Value.ForEach(v =>
 			{
+				var vStr = callback(v);
+				if(vStr == null)
+				{
+					return;
+				}
+				if(vStr.Contains(' '))
+				{
+					vStr = $"\"{vStr}\"";
+                }
 				if (kvp.Key == string.Empty)
 				{
-					file.Write(kvp.Value.ToString() + " ");
+					file.Write(vStr + " ");
 				}
 				else
 				{
-					file.WriteLine($"{new String('\t', indentation)}{kvp.Key} = {v.ToString()}");
+					file.WriteLine($"{new String('\t', indentation)}{kvp.Key} = {vStr}");
 				}
 			});
 		}
@@ -388,6 +399,11 @@ namespace Eu4ToVic2
 				throw new Exception("An unknown error occurred.");
 			}
 			return rootList;
+		}
+
+		public void AddValue(string v)
+		{
+			AddValue(string.Empty, v);
 		}
 
 		private static void Terminate(PdxSublist currentList, StringBuilder key, StringBuilder value, char? ch = null)
@@ -716,6 +732,16 @@ namespace Eu4ToVic2
 					yield return new KeyValuePair<TKey, TValue>(entry.Key, subEntry);
 				}
 			}
+		}
+
+		/// <summary>
+		/// returns the "true" value of the dictionary - ie the list of values
+		/// </summary>
+		/// <param name="v"></param>
+		/// <returns></returns>
+		public List<TValue> Every(TKey v)
+		{
+			return dictionary[v];
 		}
 
 		IEnumerator IEnumerable.GetEnumerator()

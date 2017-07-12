@@ -140,6 +140,7 @@ namespace Eu4ToVic2
 			IsVic2Country = !world.ExistingCountries.Add(tag);
 			if (!IsVic2Country)
 			{
+				Console.WriteLine($"Creating nation for {primaryCulture.DisplayName} culture... ({primaryCulture.Name})");
 				GraphicalCulture = "Generic";
 				world.Vic2Countries.Add(this);
 				//setup
@@ -232,9 +233,9 @@ namespace Eu4ToVic2
 			var data = new PdxSublist(null);
 
 			var colour = new PdxSublist(data, "color");
-			colour.Values.Add(MapColour.Red.ToString());
-			colour.Values.Add(MapColour.Green.ToString());
-			colour.Values.Add(MapColour.Blue.ToString());
+			colour.AddValue(MapColour.Red.ToString());
+			colour.AddValue(MapColour.Green.ToString());
+			colour.AddValue(MapColour.Blue.ToString());
 			data.AddSublist("color", colour);
 
 			data.AddValue("graphical_culture", GraphicalCulture);

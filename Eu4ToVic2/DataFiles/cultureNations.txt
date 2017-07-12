@@ -13,6 +13,29 @@ primary = {
 	persian = PER
 	polish = POL
 	british = ENG
+	dutch = NET
+	wallonian = BEL
+	spanish = SPA
+	catalan = CAT
+	russian = RUS
+	ukrainian = UKR
+	turkish = TUR
+	azerbaijani = AZB
+	mongol = MGL
+	tatar = CRI
+	vietnamese = DAI
+	thai = SIA
+	burmese = BUR
+	japanese = JAP
+	australian = AST
+	anglo_canadian = CAN
+	french_canadian = QUE
+	mexican = MEX
+	brazilian = BRZ
+}
+
+# will not generate nations for these cultures
+except = {
 }
 
 # sets union nation of a culture group
