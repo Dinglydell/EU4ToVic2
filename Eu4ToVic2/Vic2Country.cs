@@ -481,6 +481,17 @@ namespace Eu4ToVic2
 			}
 			//});
 		}
+
+		internal void CreateFlag(string path, string type)
+		{
+			if (type == "republic") {
+				TGAWriter.WriteTricolourTGA(path, MapColour, new Colour(255, 255, 255), new Colour(255, 255, 0));
+			}
+			else {
+				TGAWriter.WriteUniformTGA(path, MapColour);
+			}
+		}
+
 		private void IterateEffects(Vic2World vic2World, Action<Dictionary<string, float>> callback)
 		{
 			IterateCountryEffects(vic2World, Eu4Country, vic2World.CountryEffects, callback);
@@ -728,8 +739,9 @@ namespace Eu4ToVic2
 			get { return liberal; }
 			set
 			{
-				conservative -= value;
-				liberal += value;
+				var change = value - liberal;
+				conservative -= change;
+				liberal += change;
 			}
 		}
 		private int conservative;
@@ -739,9 +751,10 @@ namespace Eu4ToVic2
 			get { return conservative; }
 			set
 			{
-				liberal -= value / 2;
-				reactionary -= value / 2;
-				conservative += value;
+				var change = value - conservative;
+				liberal -= change / 2;
+				reactionary -= change / 2;
+				conservative += change;
 			}
 		}
 
@@ -752,8 +765,9 @@ namespace Eu4ToVic2
 			get { return reactionary; }
 			set
 			{
-				conservative -= value;
-				reactionary += value;
+				var change = value - reactionary;
+				conservative -= change;
+				reactionary += change;
 			}
 		}
 

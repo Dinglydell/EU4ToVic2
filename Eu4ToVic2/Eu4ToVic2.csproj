@@ -55,6 +55,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProvinceMapper.cs" />
+    <Compile Include="TGAWriter.cs" />
     <Compile Include="Vic2Country.cs" />
     <Compile Include="Vic2Culture.cs" />
     <Compile Include="Vic2DiploRelation.cs" />

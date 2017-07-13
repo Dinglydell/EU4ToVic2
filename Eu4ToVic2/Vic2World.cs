@@ -469,7 +469,7 @@ namespace Eu4ToVic2
 			var flagDir = Directory.CreateDirectory(Path.Combine(OUTPUT, @"gfx\flags"));
 			var eu4Flags = Eu4Save.GetFilesFor(@"gfx\flags");
 			var vic2Flags = Directory.GetFiles(Path.Combine(VIC2_DIR, @"gfx\flags"));
-			var suffixes = new string[] { "", "_communist", "_fascist", "_monarchy", "_republic" };
+			var suffixes = new string[] { "", "communist", "fascist", "monarchy", "republic" };
 			foreach (var country in Vic2Countries)
 			{
 				//common\countries
@@ -482,13 +482,25 @@ namespace Eu4ToVic2
 				{
 					country.GetHistoryCountryFile().WriteToFile(file);
 				}
+				if(country.CountryTag == "GRA")
+				{
+					Console.WriteLine();
+				}
 				if (vic2Flags.FirstOrDefault(f => Path.GetFileName(f).StartsWith(country.CountryTag)) == null)
 				{
 
 					var eu4Flag = eu4Flags.Find(f => Path.GetFileName(f).StartsWith(country.Eu4Country?.CountryTag ?? "!"));
 					foreach (var suff in suffixes)
 					{
-						File.Copy(eu4Flag ?? $"ENG{suff}.tga", Path.Combine(flagDir.FullName, $"{country.CountryTag}{suff}.tga"));
+						var name = country.CountryTag + (suff == string.Empty ? string.Empty : $"_{suff}");
+                        if (eu4Flag == null)
+						{
+							country.CreateFlag(Path.Combine(flagDir.FullName, $"{name}.tga"), suff);
+						} else
+						{
+							File.Copy(eu4Flag, Path.Combine(flagDir.FullName, $"{name}.tga"));
+						}
+
 					}
 				}
 
