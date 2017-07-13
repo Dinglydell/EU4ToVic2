@@ -578,3 +578,16 @@ values = {
 	
 	
 }
+
+
+institutions = {
+	enlightenment = {
+		UH_liberal = 5
+		plurality = 4
+		consciousness = 4
+	}
+	renaissance = {
+		plurality = 1
+		consciousness = 1
+	}
+}

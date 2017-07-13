@@ -34,7 +34,7 @@ primary = {
 	brazilian = BRZ
 }
 
-# will not generate nations for these cultures
+# TODO: will not generate nations for these cultures
 except = {
 }
 

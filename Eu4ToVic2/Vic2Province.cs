@@ -136,7 +136,7 @@ namespace Eu4ToVic2
 			//{
 			//	return null;
 			//}
-			return Pops.GetData(ProvID);
+			return Pops.GetData(this);
 		}
 
 		private void CalcEffects(Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
@@ -144,6 +144,7 @@ namespace Eu4ToVic2
 			var factories = new Dictionary<string, float>();
 			var baseFactories = 0f;
 			//Factories = new HashSet<string>();
+			
 			IterateEffects(vic2World, siblingProvinces, eu4Provinces, (effects, fromProvince) =>
 			{
 				CalcPopEffects(effects, fromProvince);
@@ -163,12 +164,15 @@ namespace Eu4ToVic2
 				Console.WriteLine();
 			}
 			var totalFactories = new Dictionary<string, float>();
-			foreach (var factory in factories)
+			
+			foreach (var factory in World.Factories.Sublists["priority"].Values)
 			{
-				totalFactories[factory.Key] = factory.Value + baseFactories;
+				var val = factories.ContainsKey(factory) ? factories[factory] : 0;
+				totalFactories[factory] = val + baseFactories;
 			}
-			totalFactories.OrderByDescending(f => f.Value);
-			foreach (var factory in totalFactories)
+			// in order of highest score to lowest score, for equal scores it's ordered by the order in the priority section of factories.txt
+			var orderedFactories = totalFactories.OrderByDescending(f => f.Value).ThenBy(f => World.Factories.Sublists["priority"].Values.IndexOf(f.Key));
+			foreach (var factory in orderedFactories)
 			{
 				if(factory.Value < 1)
 				{
@@ -241,6 +245,8 @@ namespace Eu4ToVic2
 				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_tax", prov.BaseTax / (float)siblingProvinces);
 				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_production", prov.BaseProduction / (float)siblingProvinces);
 				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_manpower", prov.BaseManpower / (float)siblingProvinces);
+				// total dev
+				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "development", (prov.BaseTax + prov.BaseProduction + prov.BaseManpower) / (float)siblingProvinces);
 
 				// estates
 				if (prov.Estate != null && vic2World.ProvinceEffects.Sublists["estate"].Sublists.ContainsKey(prov.Estate))
@@ -273,14 +279,16 @@ namespace Eu4ToVic2
 					}
 
 				}
+				// from owner country 
+				if (prov.Owner != null && vic2World.ProvinceEffects.Sublists.ContainsKey("owner"))
+				{
+					Vic2Country.IterateCountryEffects(vic2World, prov.Owner, vic2World.ProvinceEffects.Sublists["owner"], (effects) => { callback(effects, null); });
+				}
 
 			}
 
-			// from owner country 
-			if (Owner != null && vic2World.ProvinceEffects.Sublists.ContainsKey("owner"))
-			{
-				Vic2Country.IterateCountryEffects(vic2World, Owner.Eu4Country, vic2World.ProvinceEffects.Sublists["owner"], (effects) => { callback(effects, null); });
-			}
+			
+			
 		}
 	}
 
@@ -543,12 +551,17 @@ namespace Eu4ToVic2
 			return $"{type}/{culture}/{religion}";
 		}
 
-		internal PdxSublist GetData(int provID)
+		internal PdxSublist GetData(Vic2Province province)
 		{
-			var data = new PdxSublist(null, provID.ToString());
+			var data = new PdxSublist(null, province.ProvID.ToString());
 			foreach (var pop in Pops)
 			{
-				var popData = new PdxSublist(data, pop.Job);
+				var job = pop.Job;
+				if(province.Factories.Count == 0 && (job == "craftsmen" || job == "clerks"))
+				{
+					job = "artisans";
+				}
+				var popData = new PdxSublist(data, job);
 				popData.AddValue("culture", pop.Culture);
 				popData.AddValue("religion", pop.Religion);
 				popData.AddValue("size", pop.Size.ToString());

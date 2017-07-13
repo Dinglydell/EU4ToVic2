@@ -83,7 +83,7 @@ namespace Eu4ToVic2
 			//base literacy
 			Literacy = 0.1f;
 
-			IsCivilised = eu4Country.Institutions.TrueForAll(b => b);
+			IsCivilised = eu4Country.Institutions.Values.All(b => b);
 			// -100 - 100 scaled to 0 - 100
 			Prestige = (eu4Country.Prestige + 100) / 2;
 
@@ -558,6 +558,21 @@ namespace Eu4ToVic2
 			vic2World.ValueEffect(effects, callback, "adm_tech", country.AdmTech);
 			vic2World.ValueEffect(effects, callback, "dip_tech", country.DipTech);
 			vic2World.ValueEffect(effects, callback, "mil_tech", country.MilTech);
+
+
+			//institutions
+			if (effects.Sublists.ContainsKey("institutions"))
+			{
+				foreach (var institution in country.Institutions)
+				{
+					var key = institution.Value ? institution.Key : ("not_" + institution.Key);
+					if (effects.Sublists["institutions"].Sublists.ContainsKey(key))
+					{
+						callback(effects.GetSublist("institutions").GetSublist(key).FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum()));
+					}
+					
+				}
+			}
 		}
 
 	}

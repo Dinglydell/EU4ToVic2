@@ -3,29 +3,60 @@
 #
 # <poptype> = <value>
 # increases/decreases population with this job
+# NOTE: increasing labourers or farmers has the same effect - the game automatically switches them based on the province RGO
+# NOTE: crasftmen and clerks will become artisans if there are no factories in the province
 # 
 # relative_<poptype> = <value>
 # increases/decreases population with this job as a % of total province population - applied after all fixed value pop modifiers are applied
 #
 # factory = <value>
-# TODO: increases the number of factories
+# Increases the number of factories
 #
 # <factory type> = <value>
-# TODO: increases the number of a specific factory. This value is added to the total factory value first.
+# Increases the number of a specific factory. This value is added to the total factory value first.
 
 owner = {
 	# any category/subcategory from countryEffects.txt can be used here and will apply based on the province owner
+	values = {
+		adm_tech = { # every adm tech below 32 decreases num factories
+			average = 32
+			maximum = 0
+			factory = 1
+		}
+		dip_tech = {
+			average = 32
+			maximum = 0
+			factory = 0.5
+		}
+		mil_tech = {
+			average = 32
+			maximum = 0
+			factory = 0.5
+		}
+	}
+	# TODO:
+	institutions = {
+		not_manufactories = {
+			factory = -10
+		}
+		not_enlightenment = {
+			factory = -10
+		}
+	}
 }
 
 values = {
 	base_tax = {
 		labourers = 10000
+		craftsmen = 2000
 		bureaucrats = 50
 		clergymen = 5
 	}
 	base_tax = {
 		average = 5
 		minimum = 0
+		craftsmen = 250
+		clerks = 250
 		aristocrats = 20
 		bureaucrats = 50
 		clergymen = 20
@@ -33,6 +64,8 @@ values = {
 	base_tax = {
 		average = 10
 		minimum = 0
+		craftsmen = 250
+		clerks = 250
 		aristocrats = 30
 		bureaucrats = 50
 		clergymen = 40
@@ -40,9 +73,12 @@ values = {
 	base_tax = {
 		average = 10
 		minimum = 0
+		craftsmen = 250
+		clerks = 250
 		aristocrats = 30
 		bureaucrats = 50
 		clergymen = 40
+		
 	}
 	base_tax = {
 		average = 20
@@ -50,25 +86,28 @@ values = {
 		aristocrats = 40
 		bureaucrats = 100
 		clergymen = 80
-		factory = 0.05
+		
 	}
 	base_production = {
 		# doesn't matter if farmers or labourers, code automatically switches based on the RGO in the province
-		labourers = 12500
-		artisans = 1000
+		labourers = 12000
+		craftsmen = 500
+		#artisans = 500
 		clergymen = 5
 	}
 	base_production = {
 		average = 5
 		minimum = 0
-		artisans = 5000
+		artisans = 1000
+		crafstmen = 1000
 		aristocrats = 20
 		clergymen = 20
 	}
 	base_production = {
 		average = 10
 		minimum = 0
-		artisans = 5000
+		artisans = 2000
+		craftsmen = 1000
 		aristocrats = 30
 		capitalists = 50
 		clergymen = 40
@@ -76,15 +115,17 @@ values = {
 	base_production = {
 		average = 20
 		minimum = 0
-		artisans = 5000
+		artisans = 4000
+		craftsmen
 		aristocrats = 40
 		capitalists = 50
 		clergymen = 80
-		factory = 0.1
+		
 	}
 	base_manpower = {
 		soldiers = 250
-		labourers = 1000
+		labourers = 10000
+		craftsmen = 250
 		clergymen = 5
 	}
 	base_manpower = {
@@ -106,6 +147,17 @@ values = {
 		soldiers = 100
 		officers = 100
 		clergymen = 80
+		
+	}
+	
+	development = {
+		minimum = 0
+		average = 40
+		factory = 0.05
+	}
+	development = {
+		minimum = 0
+		average = 50
 		factory = 0.05
 	}
 }

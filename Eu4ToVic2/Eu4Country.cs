@@ -65,7 +65,8 @@ namespace Eu4ToVic2
 
 	public class Eu4Country
 	{
-
+		//Todo: better system here
+		public static readonly string[] INSTITUTION_NAMES = new string[] { "feudalism", "renaissance", "new_world_i", "printing_press", "global_trade", "manufactories", "enlightenment" };
 		public bool Exists { get; set; }
 
 		public string DisplayNoun { get; set; }
@@ -73,7 +74,7 @@ namespace Eu4ToVic2
 
 		public byte GovernmentRank { get; set; }
 
-		public List<bool> Institutions { get; private set; }
+		public Dictionary<string, bool> Institutions { get; private set; }
 		public string CountryTag { get; set; }
 		public string Overlord { get; set; }
 		public float LibertyDesire { get; set; }
@@ -153,7 +154,12 @@ namespace Eu4ToVic2
 			}
 
 			var institutions = country.GetSublist("institutions");
-			Institutions = institutions.FloatValues[string.Empty].Select(ins => ins == 1).ToList();
+			var listInstitutions = institutions.FloatValues[string.Empty].Select(ins => ins == 1).ToList();
+			Institutions = new Dictionary<string, bool>();
+			for(var i = 0; i < listInstitutions.Count; i++)
+			{
+				Institutions.Add(INSTITUTION_NAMES[i], listInstitutions[i]);
+			}
 			Capital = (int)country.GetFloat("capital");
 			var colours = country.GetSublist("colors");
 			var mapColour = colours.GetSublist("map_color");

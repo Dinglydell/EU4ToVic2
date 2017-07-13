@@ -229,7 +229,7 @@ namespace Eu4ToVic2
 			});
 			Console.WriteLine($"Loaded {Countries.Count} countries.");
 			Console.WriteLine($"{Countries.Count(c => c.Value.Exists)} countries exist.");
-			Console.WriteLine($"{Countries.Count(c => c.Value.Institutions[6]) } countries have embraced enlightenment.");
+			Console.WriteLine($"{Countries.Count(c => c.Value.Institutions["enlightenment"]) } countries have embraced enlightenment.");
 		}
 
 		private void LoadProvinceData()
