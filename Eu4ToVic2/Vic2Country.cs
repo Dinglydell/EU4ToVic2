@@ -14,6 +14,10 @@ namespace Eu4ToVic2
 		/// Determines whether country exists in vanilla vic2
 		/// </summary>
 		public bool IsVic2Country { get; set; }
+		/// <summary>
+		/// Whether or not this country was generated for a culture
+		/// </summary>
+		public bool IsCultureNation { get; set; }
 		public Eu4Country Eu4Country { get; set; }
 		public string CountryTag { get; set; }
 		public Colour MapColour { get; set; }
@@ -91,11 +95,11 @@ namespace Eu4ToVic2
 
 			CalcEffects(vic2World);
 			// TODO: make this less of a hack
-			if(Government == "absolute_monarchy" && Reforms.vote_franschise != vote_franschise.none_voting)
+			if (Government == "absolute_monarchy" && Reforms.vote_franschise != vote_franschise.none_voting)
 			{
 				Government = "prussian_constitutionalism";
 			}
-			if(Government == null)
+			if (Government == null)
 			{
 				Console.WriteLine("Uh oh");
 			}
@@ -106,11 +110,16 @@ namespace Eu4ToVic2
 			}
 		}
 
-		public void AddLocalisation(Dictionary<string, string> localisation, PdxSublist localeHelper)
+		public void AddLocalisation(Dictionary<string, string> localisation, PdxSublist localeHelper, Vic2World world)
 		{
+			if (IsCultureNation)
+			{
+				localisation.Add($"form_{PrimaryCulture}_nation_title", $"Unite the {world.Cultures[PrimaryCulture].DisplayName} People");
+				localisation.Add($"form_{PrimaryCulture}_nation_desc", $"Since time immemorial, the {world.Cultures[PrimaryCulture].DisplayName} people have split among many nation states. In the modern days of nationalism, we need our own country to fulfil our right to self-determination.");
+			}
 			if (!IsVic2Country)
 			{
-				
+
 				localisation.Add(CountryTag, DisplayNoun);
 				localisation.Add($"{CountryTag}_ADJ", DisplayAdj);
 				localeHelper.GetSublist("government").ForEachString(gov =>
@@ -126,7 +135,7 @@ namespace Eu4ToVic2
 			}
 		}
 
-		public Vic2Country(Vic2World world, string tag, Vic2CultureGroup cultureGroup): this(world, tag, world.Vic2Countries.Where(c => cultureGroup.Cultures.Find(cul => c.PrimaryCulture == cul.Name) != null), cultureGroup.Cultures.First())
+		public Vic2Country(Vic2World world, string tag, Vic2CultureGroup cultureGroup) : this(world, tag, world.Vic2Countries.Where(c => cultureGroup.Cultures.Find(cul => c.PrimaryCulture == cul.Name) != null), cultureGroup.Cultures.First())
 		{
 
 		}
@@ -138,6 +147,7 @@ namespace Eu4ToVic2
 		{
 			CountryTag = tag;
 			IsVic2Country = !world.ExistingCountries.Add(tag);
+			IsCultureNation = true;
 			if (!IsVic2Country)
 			{
 				Console.WriteLine($"Creating nation for {primaryCulture.DisplayName} culture... ({primaryCulture.Name})");
@@ -147,8 +157,41 @@ namespace Eu4ToVic2
 				Capital = 1;
 
 				PrimaryCulture = primaryCulture.Name;
+
+				// Name generator
 				DisplayNoun = world.LocalisationHelper.GetSublist("culture_nation").GetString("noun").Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
-                DisplayAdj = world.LocalisationHelper.GetSublist("culture_nation").GetString("adj").Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
+				DisplayAdj = world.LocalisationHelper.GetSublist("culture_nation").GetString("adj").Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
+				if (primaryCulture.DisplayName.Last() == 'n' && "aeiou".Contains(primaryCulture.DisplayName[primaryCulture.DisplayName.Length - 2]))
+				{
+					DisplayNoun = primaryCulture.DisplayName.Substring(0, primaryCulture.DisplayName.Length - 1);
+					//DisplayNoun = world.LocalisationHelper.GetSublist("culture_nation").GetString("noun").Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
+				}
+				else if (primaryCulture.DisplayName.Last() == 'a')
+				{
+					DisplayNoun = primaryCulture.DisplayName;
+					DisplayAdj = primaryCulture.DisplayName + 'n';
+
+				}
+				else if(primaryCulture.DisplayName.Last() == 'i')
+				{
+					DisplayNoun = primaryCulture.DisplayName + 'a';
+				}
+				else if ("ou".Contains(primaryCulture.DisplayName.Last()))
+				{
+					DisplayNoun = primaryCulture.DisplayName + "ria";
+				}
+				else if (primaryCulture.DisplayName.EndsWith("ese"))
+				{
+					DisplayNoun = primaryCulture.DisplayName.Substring(0, primaryCulture.DisplayName.Length - 3);
+				}
+				else if(primaryCulture.DisplayName.Last() == 'e' )
+				{
+					DisplayNoun = primaryCulture.DisplayName;
+				} else if(primaryCulture.DisplayName.Last() == 'r' &&  "aeiou".Contains(primaryCulture.DisplayName[primaryCulture.DisplayName.Length - 2]))
+				{
+					DisplayNoun = primaryCulture.DisplayName + "ia";
+				}
+
 
 				AcceptedCultures = new List<string>();
 				PoliticalParties = new List<PoliticalParty>();
@@ -159,7 +202,7 @@ namespace Eu4ToVic2
 				}
 				FinalisePoliticalParties(world, BasePartyModifier);
 
-				
+
 
 				MapColour = primaryCulture.Colour;
 				// the most common religion out of nations with that culture
@@ -174,6 +217,17 @@ namespace Eu4ToVic2
 				//}).OrderByDescending(x => x.Count).Select(x => x.Name).First();
 
 			}
+		}
+
+		public string GetFormDecision(string template)
+		{
+			if (!IsCultureNation)
+			{
+				return null;
+			}
+
+
+			return template.Replace("%TAG%", CountryTag).Replace("%CULTURE%", PrimaryCulture);
 		}
 
 		public PdxSublist GetHistoryCountryFile()
@@ -484,7 +538,8 @@ namespace Eu4ToVic2
 
 		internal void CreateFlag(string path, string type)
 		{
-			if (type == "republic") {
+			if (type == "republic")
+			{
 				TGAWriter.WriteTricolourTGA(path, MapColour, new Colour(255, 255, 255), new Colour(255, 255, 0));
 			}
 			else {
@@ -499,7 +554,7 @@ namespace Eu4ToVic2
 		}
 		public static void IterateCountryEffects(Vic2World vic2World, Eu4Country country, PdxSublist effects, Action<Dictionary<string, float>> callback)
 		{
-			
+
 			if (effects.Sublists.ContainsKey("ideas"))
 			{
 				//idea groups
@@ -581,7 +636,7 @@ namespace Eu4ToVic2
 					{
 						callback(effects.GetSublist("institutions").GetSublist(key).FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum()));
 					}
-					
+
 				}
 			}
 		}

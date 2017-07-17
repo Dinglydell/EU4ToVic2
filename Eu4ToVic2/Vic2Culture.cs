@@ -42,12 +42,18 @@ namespace Eu4ToVic2
 
 		private bool isUnique(int r, int g, int b, byte threshhold)
 		{
-			byte divisor = threshhold;
+			
 			foreach (var culture in World.Cultures)
-			{	
-				if (culture.Value.Colour != null && culture.Value.Colour.Red / divisor == r / divisor && culture.Value.Colour.Green / divisor == g / divisor && culture.Value.Colour.Blue / divisor == b / divisor)
+			{
+				if (culture.Value.Colour != null)
 				{
-					return false;
+					var red = (culture.Value.Colour.Red - r);
+					var green = (culture.Value.Colour.Green - g);
+					var blue = (culture.Value.Colour.Blue - b);
+					if (2 * red * red + 4 * green * green + 3 * blue * blue < threshhold * threshhold)
+					{
+						return false;
+					}
 				}
 			}
 			return true;
@@ -82,6 +88,11 @@ namespace Eu4ToVic2
 
 		public void SetupPrimaryNation(Vic2World world)
 		{
+			if (world.CultureNations.GetSublist("except").Values.Contains(Name))
+			{
+				// this culture is blacklisted
+				return;
+			}
 			if(world.CultureNations.GetSublist("primary").KeyValuePairs.ContainsKey(Name))
 			{
 				var tag = world.CultureNations.GetSublist("primary").GetString(Name);
@@ -114,19 +125,21 @@ namespace Eu4ToVic2
 				Colour = PrimaryNation?.MapColour;
 				if (Colour == null)
 				{
-					byte r = 240;
+					byte r = 0;
 					byte g = 0;
-					byte b = 0;
-					byte threshhold = 32;
-					while (!isUnique(r, g, b, threshhold))
+					byte b = 240;
+					byte threshhold = 8;
+					while (!isUnique(r, g, b, (byte)(threshhold * 4)))
 					{
-						b += threshhold;
-						if (b == 0)
+						r += (byte)(threshhold * 2);
+						if (r < threshhold * 2)
 						{
-							g += threshhold;
-							if (g == 0)
+							g += (byte)(threshhold * 4);
+							
+							
+							if (g < threshhold * 4)
 							{
-								r += threshhold;
+								b += (byte)(threshhold * 3);
 							}
 						}
 					}

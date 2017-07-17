@@ -19,7 +19,8 @@ party = {
 	anarcho_liberal = "The Liberation Party"
 }
 
-# determines how dynamically created cultural nations are named
+# determines how dynamically created cultural nations are named by default
+# the naming system will trying and come up with a different name, but will use this if it can't generate one
 culture_nation = {
 	noun = "%CULTURE% Nation"
 	adj = "%CULTURE%"

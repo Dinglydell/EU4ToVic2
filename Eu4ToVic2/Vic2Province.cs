@@ -477,6 +477,8 @@ namespace Eu4ToVic2
 					aPop.Size += pop.Size;
 				}
 			}
+
+			listA.RemoveAll(p => p.Size <= 0);
 		}
 
 		/// <summary>
@@ -502,7 +504,7 @@ namespace Eu4ToVic2
 		}
 		private static List<Pop> SplitPops(int total, List<Pop> popsList, Func<string, string> culture, Func<string, string> religion)
 		{
-			var eachSplit = total / popsList.Count;
+			var eachSplit = total / (popsList.Count == 0 ? 1 : popsList.Count);
 			var splitSoFar = 0;
 			var newPops = new List<Pop>();
 			for (var i = 0; i < popsList.Count; i++)

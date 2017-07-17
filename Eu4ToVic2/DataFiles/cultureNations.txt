@@ -32,10 +32,15 @@ primary = {
 	french_canadian = QUE
 	mexican = MEX
 	brazilian = BRZ
+	finnish = FIN
 }
 
-# TODO: will not generate nations for these cultures
+
 except = {
+	asian_minor
+	african_minor
+	native_american_minor
+	inuit
 }
 
 # sets union nation of a culture group

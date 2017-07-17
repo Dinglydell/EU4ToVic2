@@ -14,7 +14,7 @@ namespace Eu4ToVic2
 
 		public static readonly string VIC2_DIR = @"C:\Program Files (x86)\Steam\steamapps\common\Victoria 2\";
 
-		public static readonly string OUTPUT = @"output\";
+		public static readonly string OUTPUT = @"C:\Program Files (x86)\Steam\steamapps\common\Victoria 2\mod\converter_test\";
 
 		public ProvinceMapper ProvMapper { get; set; }
 		public Mapper V2Mapper { get; set; }
@@ -81,9 +81,11 @@ namespace Eu4ToVic2
 			CreateReligionFile();
 			CreateCultureFile();
 			CreateDiplomacyFiles();
-			CreatLocalisationFiles();
+			CreateDecisionFiles();
+			CreateLocalisationFiles();
 			Console.WriteLine("Done!");
 		}
+
 
 		private void LoadVanillaLocalisation()
 		{
@@ -124,7 +126,7 @@ namespace Eu4ToVic2
 							readKey = false;
 							readValue = true;
 						}
-						
+
 						continue;
 					}
 					if (Environment.NewLine.Contains(ch))
@@ -225,13 +227,13 @@ namespace Eu4ToVic2
 			LocalisationHelper = PdxSublist.ReadFile("localisation.txt");
 		}
 
-		private void CreatLocalisationFiles()
+		private void CreateLocalisationFiles()
 		{
 			Localisation = new Dictionary<string, string>();
 			//countries
 			foreach (var country in Vic2Countries)
 			{
-				country.AddLocalisation(Localisation, LocalisationHelper);
+				country.AddLocalisation(Localisation, LocalisationHelper, this);
 			}
 			//cultures
 			foreach (var cultureGroup in CultureGroups)
@@ -438,6 +440,38 @@ namespace Eu4ToVic2
 			Cultures[vic2Name] = CultureGroups[group.Name].AddCulture(eu4Culture, this, vic2Name);
 			return eu4Culture;
 		}
+		private void CreateDecisionFiles()
+		{
+			Console.WriteLine("Creating decision files...");
+			Directory.CreateDirectory(Path.Combine(OUTPUT, "decisions"));
+
+			var template = File.ReadAllText("form_nation_template.txt");
+
+
+
+			//var cNations = Vic2Countries.Where(c => c.IsCultureNation).ToList();
+			//84
+			//for (var i = 82; i < 84; i++ )
+			//{
+			foreach (var country in Vic2Countries)
+			{
+				if (country.IsCultureNation)
+				{
+					//var country = cNations[i];
+					if (Vic2Provinces.Find(p => p.Cores?.Contains(country) ?? false) != null)
+					{
+						using (var decisionFile = File.CreateText(Path.Combine(OUTPUT, $@"decisions\form_{country.PrimaryCulture}_nation.txt")))
+						{
+							decisionFile.WriteLine("political_decisions = {");
+							decisionFile.Write(country.GetFormDecision(template));
+							decisionFile.WriteLine("}");
+						}
+					}
+				}
+
+			}
+
+		}
 
 		private void CreateCountryFiles()
 		{
@@ -482,7 +516,7 @@ namespace Eu4ToVic2
 				{
 					country.GetHistoryCountryFile().WriteToFile(file);
 				}
-				if(country.CountryTag == "GRA")
+				if (country.CountryTag == "GRA")
 				{
 					Console.WriteLine();
 				}
@@ -493,10 +527,11 @@ namespace Eu4ToVic2
 					foreach (var suff in suffixes)
 					{
 						var name = country.CountryTag + (suff == string.Empty ? string.Empty : $"_{suff}");
-                        if (eu4Flag == null)
+						if (eu4Flag == null)
 						{
 							country.CreateFlag(Path.Combine(flagDir.FullName, $"{name}.tga"), suff);
-						} else
+						}
+						else
 						{
 							File.Copy(eu4Flag, Path.Combine(flagDir.FullName, $"{name}.tga"));
 						}

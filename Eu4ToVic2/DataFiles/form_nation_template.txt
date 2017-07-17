@@ -1,0 +1,49 @@
+	form_%CULTURE%_nation = {
+		potential = {
+			primary_culture = %CULTURE%
+			NOT = {
+				exists = %TAG%
+			}
+		}	
+		allow = {
+			OR = {
+				is_greater_power = yes
+				is_secondary_power = yes
+			}
+			war = no
+			%TAG% = {
+				all_core = {
+					OR = {
+						OR = {
+							owned_by = THIS
+							owner = {
+								in_sphere = THIS
+							}
+						}
+						NOT = {
+							culture = %CULTURE%
+						}
+					}
+				}
+			}
+		}
+		
+		effect = {
+			prestige = 10
+			any_country = {
+				limit = {
+					primary_culture = %CULTURE%
+					in_sphere = THIS
+					NOT = {
+						tag = THIS
+					}
+				}
+				annex_to = THIS
+			}
+			change_tag = %TAG%
+		}
+		ai_will_do = {
+			factor = 1
+		}
+	}
+

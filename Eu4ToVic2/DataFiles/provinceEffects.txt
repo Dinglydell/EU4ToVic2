@@ -34,7 +34,7 @@ owner = {
 			factory = 0.5
 		}
 	}
-	# TODO:
+
 	institutions = {
 		not_manufactories = {
 			factory = -10
