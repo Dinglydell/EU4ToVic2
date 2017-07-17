@@ -33,6 +33,10 @@ namespace Eu4ToVic2
 
 		public List<string> Buildings { get; set; }
 
+		public Eu4Area Area { get; set; }
+
+		public bool IsState { get; set; }
+
 		public Eu4Province(PdxSublist province, Eu4Save save)
 		{
 			ProvinceID = -int.Parse(province.Key);
@@ -42,6 +46,9 @@ namespace Eu4ToVic2
 			}
 			var institutions = province.GetSublist("institutions");
 			Institutions = institutions.Values.Select(ins => float.Parse(ins)).ToList();
+
+			Area = save.Areas.Values.Single(a => a.Provinces.Contains(ProvinceID));
+			IsState = Owner?.States.Contains(Area) ?? false;
 
 			Cores = new List<Eu4Country>();
 

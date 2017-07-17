@@ -41,6 +41,11 @@ namespace Eu4ToVic2
 		/// <param name="eu4Provinces">List of eu4 provinces mapped to this province</param>
 		public Vic2Province(int provID, PdxSublist defaultProvince, Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
 		{
+			DoSetup(provID, defaultProvince, vic2World, siblingProvinces, eu4Provinces);
+		}
+
+		private void DoSetup(int provID, PdxSublist defaultProvince, Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
+		{
 			World = vic2World;
 			Subfolder = Path.GetFileName(Path.GetDirectoryName(defaultProvince.Key));
 			FileName = Path.GetFileName(defaultProvince.Key);
@@ -76,12 +81,13 @@ namespace Eu4ToVic2
 					});
 					if (vic2World.Cultures[cul].PrimaryNation == null)
 					{
-						if(vic2World.Cultures[cul].Group.Union == null)
+						if (vic2World.Cultures[cul].Group.Union == null)
 						{
-							
+
 
 						}
-					} else { 
+					}
+					else {
 						Cores.Add(vic2World.Cultures[cul].PrimaryNation);
 					}
 					if (vic2World.Cultures[cul].Group.Union != null)
@@ -89,12 +95,13 @@ namespace Eu4ToVic2
 						Cores.Add(vic2World.Cultures[cul].Group.Union);
 					}
 				}
-			} else
+			}
+			else
 			{
 				Pops.ReadData(vic2World.PopData.Sublists[provID.ToString()]);
 			}
 
-			
+
 		}
 
 		public PdxSublist GetProvinceData()

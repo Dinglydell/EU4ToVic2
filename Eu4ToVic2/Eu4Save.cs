@@ -27,6 +27,9 @@ namespace Eu4ToVic2
 		public Dictionary<string, string> Localisation { get; private set; }
 		internal List<Eu4DiploRelation> Relations { get; private set; }
 
+		public static Dictionary<string, Eu4Area> Areas { get; private set; }
+		public static Dictionary<string, HashSet<Eu4Area>> Regions { get; private set; }
+
 		public Eu4Save(string filePath, string modFilePath)
 		{
 			
@@ -34,17 +37,42 @@ namespace Eu4ToVic2
 			LoadLocalisation();
 			ReadSave(filePath);
 			PlayerTag = RootList.GetString("player");
+			LoadRegions();
 			LoadBuildingData();
 			//LoadCountryTags();
 			LoadCountryData();
 			LoadDiploRelations();
 			//Console.WriteLine($"Average merc: {Countries.Where(c => c.Value.Exists).Sum(c => c.Value.Mercantilism) / Countries.Count}");
 			LoadProvinceData();
-
+			
 			LoadReligionData();
 			LoadCultureData();
 			
 			Console.WriteLine("EU4 data loaded.");
+		}
+
+		private void LoadRegions()
+		{
+			Console.WriteLine("Loading EU4 areas..");
+			var files = GetFilesFor("map");
+			var areaFile = files.Find(f => Path.GetFileName(f) == "area.txt");
+			var areas = PdxSublist.ReadFile(areaFile);
+			Areas = new Dictionary<string, Eu4Area>();
+			foreach (var ar in areas.Sublists)
+			{
+				//Areas[ar.Key] = new HashSet<int>(ar.Value.FloatValues.Values.SelectMany(f => f.Select(e => (int)e)));
+				Areas[ar.Key] = new Eu4Area(ar.Key, ar.Value);
+			}
+
+			Console.WriteLine("Loading EU4 regions...");
+			var regionFile = files.Find(f => Path.GetFileName(f) == "region.txt");
+			var regions = PdxSublist.ReadFile(regionFile);
+			Regions = new Dictionary<string, Eu4Region>();
+			foreach(var reg in regions.Sublists)
+			{
+
+			}
+
 		}
 
 		private void LoadDiploRelations()

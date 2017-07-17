@@ -119,6 +119,8 @@ namespace Eu4ToVic2
 		public List<string> Policies { get; set; }
 		public bool IsColonialNation { get; private set; }
 		public List<int> Opinions { get; set; }
+		public HashSet<Eu4Area> States { get; set; }
+
 		public Eu4Country(PdxSublist country, Eu4Save save)
 		{
 			CountryTag = country.Key;
@@ -151,6 +153,17 @@ namespace Eu4ToVic2
 			if (country.KeyValuePairs.ContainsKey("colonial_parent"))
 			{
 				IsColonialNation = true;
+			}
+			States = new HashSet<Eu4Area>();
+			if (country.Sublists.ContainsKey("state"))
+			{
+				country.Sublists.ForEach("state", stData =>
+				{
+					var area = save.Areas[stData.KeyValuePairs["area"]];
+					States.Add(area);
+					area.Prosperity =  stData.GetFloat("prosperity");
+					//area.Owner = this;
+				});
 			}
 
 			var institutions = country.GetSublist("institutions");
