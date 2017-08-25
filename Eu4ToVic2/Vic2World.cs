@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PdxFile;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
@@ -425,7 +426,7 @@ namespace Eu4ToVic2
 			return religion;
 		}
 
-		public string GenerateCulture(string eu4Culture, string vic2Name = null)
+		public string GenerateCulture(string eu4Culture, string vic2Name = null, string prefix = "", bool neoCulture = false)
 		{
 			if (vic2Name == null)
 			{
@@ -437,13 +438,16 @@ namespace Eu4ToVic2
 			{
 				CultureGroups[group.Name] = new Vic2CultureGroup(group);
 			}
-			Cultures[vic2Name] = CultureGroups[group.Name].AddCulture(eu4Culture, this, vic2Name);
-			return eu4Culture;
+			Cultures[vic2Name] = CultureGroups[group.Name].AddCulture(eu4Culture, this, vic2Name, prefix, neoCulture);
+			return vic2Name;
 		}
 		private void CreateDecisionFiles()
 		{
 			Console.WriteLine("Creating decision files...");
 			Directory.CreateDirectory(Path.Combine(OUTPUT, "decisions"));
+
+
+
 
 			var template = File.ReadAllText("form_nation_template.txt");
 
@@ -514,7 +518,7 @@ namespace Eu4ToVic2
 				//history\countries
 				using (var file = File.CreateText(Path.Combine(histDir.FullName, $"{country.CountryTag}.txt")))
 				{
-					country.GetHistoryCountryFile().WriteToFile(file);
+					country.GetHistoryCountryFile(this).WriteToFile(file);
 				}
 				if (country.CountryTag == "GRA")
 				{

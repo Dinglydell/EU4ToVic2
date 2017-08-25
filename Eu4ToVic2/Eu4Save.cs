@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PdxFile;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -26,29 +27,54 @@ namespace Eu4ToVic2
 		public Dictionary<string, Eu4CultureGroup> CultureGroups { get; private set; }
 		public Dictionary<string, string> Localisation { get; private set; }
 		internal List<Eu4DiploRelation> Relations { get; private set; }
+		public Dictionary<string, Eu4Area> Areas { get; private set; }
+		public Dictionary<string, Eu4Region> Regions { get; private set; }
+		public Dictionary<string, Eu4Continent> Continents { get; set; }
 
-		public static Dictionary<string, Eu4Area> Areas { get; private set; }
-		public static Dictionary<string, HashSet<Eu4Area>> Regions { get; private set; }
+		public Dictionary<string, PdxSublist> CountryHistory { get; set; }
+		public Dictionary<string, PdxSublist> ProvinceHistory { get; set; }
+		public Eu4Country GreatestPower { get; private set; }
 
 		public Eu4Save(string filePath, string modFilePath)
 		{
 			
 			ModPath = modFilePath;
+			LoadHistory();
+			LoadRegions();
+			LoadBuildingData();
 			LoadLocalisation();
 			ReadSave(filePath);
 			PlayerTag = RootList.GetString("player");
-			LoadRegions();
-			LoadBuildingData();
+			
 			//LoadCountryTags();
 			LoadCountryData();
 			LoadDiploRelations();
 			//Console.WriteLine($"Average merc: {Countries.Where(c => c.Value.Exists).Sum(c => c.Value.Mercantilism) / Countries.Count}");
 			LoadProvinceData();
-			
+			GreatestPower = Countries.OrderByDescending(c => c.Value.GreatPowerScore).First().Value;
+			Console.WriteLine("The greatest power is " + GreatestPower.CountryTag);
 			LoadReligionData();
 			LoadCultureData();
 			
 			Console.WriteLine("EU4 data loaded.");
+		}
+
+		private void LoadHistory()
+		{
+			Console.WriteLine("Loading history..");
+			CountryHistory = new Dictionary<string, PdxSublist>();
+			var ctryHistory = GetFilesFor(@"history\countries");
+			foreach (var ctry in ctryHistory)
+			{
+				CountryHistory.Add(Path.GetFileName(ctry).Substring(0, 3), PdxSublist.ReadFile(ctry));
+			}
+
+			//ProvinceHistory = new Dictionary<string, PdxSublist>();
+			//var provHistory = GetFilesFor(@"history\provinces");
+			//foreach (var prov in provHistory)
+			//{
+			//	ProvinceHistory.Add(Path.GetFileName(prov).Substring(0, 3), PdxSublist.ReadFile(prov));
+			//}
 		}
 
 		private void LoadRegions()
@@ -70,8 +96,20 @@ namespace Eu4ToVic2
 			Regions = new Dictionary<string, Eu4Region>();
 			foreach(var reg in regions.Sublists)
 			{
-
+				Regions[reg.Key] = new Eu4Region(reg.Key, reg.Value, this);
 			}
+
+			Console.WriteLine("Loading EU4 areas..");
+			
+			var continentFile = files.Find(f => Path.GetFileName(f) == "continent.txt");
+			var continents = PdxSublist.ReadFile(continentFile);
+			Continents = new Dictionary<string, Eu4Continent>();
+			foreach (var con in continents.Sublists)
+			{
+				//Areas[ar.Key] = new HashSet<int>(ar.Value.FloatValues.Values.SelectMany(f => f.Select(e => (int)e)));
+				Continents[con.Key] = new Eu4Continent(con.Key, con.Value);
+			}
+
 
 		}
 
@@ -196,7 +234,7 @@ namespace Eu4ToVic2
 				{
 					if (!CultureGroups.ContainsKey(culGroup.Key))
 					{
-						CultureGroups[culGroup.Key] = new Eu4CultureGroup(culGroup.Key, this);
+						CultureGroups[culGroup.Key] = new Eu4CultureGroup(culGroup.Value, this);
 					}
 					culGroup.Value.ForEachSublist(cul =>
 					{

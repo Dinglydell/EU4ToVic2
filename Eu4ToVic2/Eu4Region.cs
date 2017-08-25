@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using PdxFile;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Eu4ToVic2
@@ -16,6 +17,14 @@ namespace Eu4ToVic2
 			if (value.Sublists.ContainsKey("areas"))
 			{
 				Areas = new HashSet<Eu4Area>(value.Sublists["areas"].Values.Select(an => save.Areas[an]));
+				foreach (var area in Areas)
+				{
+					if(area.Region != null)
+					{
+						System.Console.WriteLine($"WARNING: {area.Name} exists in multiple regions!");
+					}
+					area.Region = this;
+				}
 			}
 		}
 	}

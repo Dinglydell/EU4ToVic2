@@ -44,14 +44,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Eu4Area.cs" />
+    <Compile Include="Eu4Continent.cs" />
     <Compile Include="Eu4Culture.cs" />
     <Compile Include="Eu4DiploRelation.cs" />
+    <Compile Include="Eu4Region.cs" />
     <Compile Include="Eu4Religion.cs" />
     <Compile Include="Mapper.cs" />
     <Compile Include="Eu4Country.cs" />
     <Compile Include="Eu4Province.cs" />
     <Compile Include="Eu4Save.cs" />
-    <Compile Include="PdxSublist.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProvinceMapper.cs" />
@@ -65,6 +67,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\PdxSublist\PdxSublist\PdxSublist.csproj">
+      <Project>{7e5ecb54-94d8-4212-807a-1766de072128}</Project>
+      <Name>PdxSublist</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

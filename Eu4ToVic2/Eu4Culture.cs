@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PdxFile;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,18 +16,37 @@ namespace Eu4ToVic2
 		public List<string> MaleNames { get; set; }
 		public List<string> FemaleNames { get; set; }
 		public List<string> DynastyNames { get; set; }
-		
+		public Eu4Continent Continent { get; set; }
+
 
 		public Eu4Culture(PdxSublist data, Eu4CultureGroup group, Eu4Save save)
 		{
 			Name = data.Key;
 			DisplayName = save.Localisation.ContainsKey(Name) ? save.Localisation[Name] : Name;
+			
+			if(Name == "english")
+			{
+				Console.WriteLine();
+			}
 			Group = group;
+			var capital = 0;
 			if (data.KeyValuePairs.ContainsKey("primary"))
 			{
 				PrimaryNation = data.GetString("primary");
+				if (save.Countries.ContainsKey(PrimaryNation))
+				{
+					capital = save.Countries[PrimaryNation].Capital;
+				}
 			}
-
+			if(capital == 0)
+			{
+				// highest development continent out of all eu4 provinces with that culture in 1444
+				Continent = save.Provinces.Values.Where(p => p.OriginalCulture == Name).GroupBy(p => p.Continent).OrderByDescending(g => g.Sum(p => p.Development)).FirstOrDefault()?.Key;
+			} else
+			{
+				Continent = save.Provinces[capital].Continent;
+			}
+			
 			MaleNames = new List<string>();
 			data.Sublists.ForEach("male_names", (sub) =>
 			{
@@ -49,11 +69,13 @@ namespace Eu4ToVic2
 		public string Name { get; set; }
 		public List<Eu4Culture> Cultures { get; set; }
 		public string DisplayName { get; internal set; }
+		public string GraphicalCulture { get; private set; }
 
-		public Eu4CultureGroup(string name, Eu4Save save)
+		public Eu4CultureGroup(PdxSublist data, Eu4Save save)
 		{
-			Name = name;
-			DisplayName = save.Localisation[name];
+			Name = data.Key;
+			GraphicalCulture = data.KeyValuePairs.ContainsKey("graphical_culture") ? data.GetString("graphical_culture") : null;
+			DisplayName = save.Localisation[data.Key];
 			Cultures = new List<Eu4Culture>();
 			//foreach(var sub in data.Sublists)
 			//{

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PdxFile;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -55,6 +56,11 @@ namespace Eu4ToVic2
 			LifeRating = (int)defaultProvince.GetFloat("life_rating");
 			Pops = new PopPool(vic2World);
 			Factories = new HashSet<string>();
+
+			if(ProvID == 222)
+			{
+				Console.WriteLine();
+			}
 			if (eu4Provinces.Count > 0)
 			{
 				// most common owner
@@ -64,9 +70,9 @@ namespace Eu4ToVic2
 				{
 					Owner = vic2World.GetCountry(Owner.Eu4Country.Overlord);
 				}
-				// all countries that have cores in any of the eu4 counterparts gets cores here
-				//Cores = eu4Provinces.SelectMany(p => p.Cores).Select(c => vic2World.GetCountry(c)).ToList();
-				Cores = new List<Vic2Country>();
+				// all countries that have full cores in any of the eu4 counterparts gets cores here
+				Cores = eu4Provinces.Where(p => p.IsState).SelectMany(p => p.Cores).Select(c => vic2World.GetCountry(c)).Distinct().ToList();
+				//Cores = new List<Vic2Country>();
 				FortLevel = eu4Provinces.Any(p => p.FortLevel > 6) ? 1 : 0;
 
 				CalcEffects(vic2World, siblingProvinces, eu4Provinces);
@@ -75,10 +81,18 @@ namespace Eu4ToVic2
 				// TODO: dynamically create countries that don't have a primary nation in vic2
 				foreach (var cul in largeCultures)
 				{
-					vic2World.CultureNations.GetAllMatchingKVPs(cul, tag =>
+					vic2World.CultureNations.KeyValuePairs.ForEach(cul, tag =>
 					{
 						Cores.Add(vic2World.Vic2Countries.Find(c => c.CountryTag == tag) ?? new Vic2Country(vic2World, tag, vic2World.Cultures[cul]));
 					});
+					// add neoculture as accepted culture
+					if (World.V2Mapper.NeoCultures.ContainsKey(cul) && World.V2Mapper.NeoCultures[cul] == Owner.PrimaryCulture)
+					{
+						if (!Owner.AcceptedCultures.Contains(cul))
+						{
+							Owner.AcceptedCultures.Add(cul);
+						}
+					}
 					if (vic2World.Cultures[cul].PrimaryNation == null)
 					{
 						if (vic2World.Cultures[cul].Group.Union == null)
@@ -388,7 +402,7 @@ namespace Eu4ToVic2
 		public void AddPop(Eu4Province fromProvince, PopType type, int quantity)
 		{
 			var history = new Dictionary<DateTime, DemographicEvent>();
-			fromProvince.CulturalHistory.ToList().ForEach(ce => history.Add(ce.Key, new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(ce.Value))));
+			fromProvince.CulturalHistory.ToList().ForEach(ce => history.Add(ce.Key, new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(ce.Value, fromProvince))));
 			fromProvince.ReligiousHistory.ToList().ForEach(re =>
 			{
 				if (history.ContainsKey(re.Key))
@@ -402,7 +416,7 @@ namespace Eu4ToVic2
 			});
 			if (history.Count == 0)
 			{
-				history[new DateTime(1444, 11, 11)] = new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(fromProvince.Culture)).SetReligion(World.V2Mapper.GetV2Religion(fromProvince.Religion));
+				history[new DateTime(1444, 11, 11)] = new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(fromProvince.Culture, fromProvince)).SetReligion(World.V2Mapper.GetV2Religion(fromProvince.Religion));
 			}
 			var orderedHistory = history.OrderBy(he => he.Key.Ticks);
 
@@ -423,9 +437,9 @@ namespace Eu4ToVic2
 				// 200 years -> +50%
 				//set[lastEntry.Value.Value] += (since.Days * 1.369863013698630136986301369863e-5); quantity *
 				MergePops(popsList, SplitPops((int)(quantity * Math.Min(1, since.Days * 6.8493150684931506849315068493151e-6)), popsList, c => majorityCulture, r => majorityReligion));
+				
 
-
-				if (entry.Value.Religion == null)
+					if (entry.Value.Religion == null)
 				{
 					if (entry.Value.Culture == null)
 					{

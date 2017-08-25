@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PdxFile;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -89,7 +90,9 @@ namespace Eu4ToVic2
 
 			IsCivilised = eu4Country.Institutions.Values.All(b => b);
 			// -100 - 100 scaled to 0 - 100
-			Prestige = (eu4Country.Prestige + 100) / 2;
+			//Prestige = (eu4Country.Prestige + 100) / 2;
+
+			Prestige = (100 * eu4Country.GreatPowerScore) / eu4Country.Save.GreatestPower.GreatPowerScore;
 
 			LastElection = eu4Country.LastElection;
 
@@ -115,7 +118,7 @@ namespace Eu4ToVic2
 			if (IsCultureNation)
 			{
 				localisation.Add($"form_{PrimaryCulture}_nation_title", $"Unite the {world.Cultures[PrimaryCulture].DisplayName} People");
-				localisation.Add($"form_{PrimaryCulture}_nation_desc", $"Since time immemorial, the {world.Cultures[PrimaryCulture].DisplayName} people have split among many nation states. In the modern days of nationalism, we need our own country to fulfil our right to self-determination.");
+				localisation.Add($"form_{PrimaryCulture}_nation_desc", $"Since time immemorial, the {world.Cultures[PrimaryCulture].DisplayName} people have been split among many nation states. In the modern days of nationalism, we need our own country to fulfil our desire for self-determination.");
 			}
 			if (!IsVic2Country)
 			{
@@ -146,6 +149,10 @@ namespace Eu4ToVic2
 		private Vic2Country(Vic2World world, string tag, IEnumerable<Vic2Country> cultureNations, Vic2Culture primaryCulture)
 		{
 			CountryTag = tag;
+			if (tag == "MCA")
+			{
+				Console.WriteLine();
+			}
 			IsVic2Country = !world.ExistingCountries.Add(tag);
 			IsCultureNation = true;
 			if (!IsVic2Country)
@@ -161,10 +168,24 @@ namespace Eu4ToVic2
 				// Name generator
 				DisplayNoun = world.LocalisationHelper.GetSublist("culture_nation").GetString("noun").Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
 				DisplayAdj = world.LocalisationHelper.GetSublist("culture_nation").GetString("adj").Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
-				if (primaryCulture.DisplayName.Last() == 'n' && "aeiou".Contains(primaryCulture.DisplayName[primaryCulture.DisplayName.Length - 2]))
+				if (primaryCulture.DisplayName.Last() == 'n' && "aeiu".Contains(primaryCulture.DisplayName[primaryCulture.DisplayName.Length - 2]))
 				{
 					DisplayNoun = primaryCulture.DisplayName.Substring(0, primaryCulture.DisplayName.Length - 1);
 					//DisplayNoun = world.LocalisationHelper.GetSublist("culture_nation").GetString("noun").Replace("%CULTURE%", primaryCulture.DisplayName).Replace("\"", string.Empty);
+				}
+				else if (primaryCulture.DisplayName.Last() == 'n' && primaryCulture.DisplayName[primaryCulture.DisplayName.Length - 2] == 'o')
+				{
+					//TODO: make this less of a hack
+					if (primaryCulture.DisplayName.EndsWith("eton"))
+					{
+						DisplayNoun = primaryCulture.DisplayName.Substring(0, primaryCulture.DisplayName.Length - 4) + "ittany";
+					}
+					else
+					{
+						DisplayNoun = primaryCulture.DisplayName + 'y';
+
+					}
+					DisplayAdj = primaryCulture.DisplayName;
 				}
 				else if (primaryCulture.DisplayName.Last() == 'a')
 				{
@@ -172,7 +193,7 @@ namespace Eu4ToVic2
 					DisplayAdj = primaryCulture.DisplayName + 'n';
 
 				}
-				else if(primaryCulture.DisplayName.Last() == 'i')
+				else if (primaryCulture.DisplayName.Last() == 'i')
 				{
 					DisplayNoun = primaryCulture.DisplayName + 'a';
 				}
@@ -184,10 +205,11 @@ namespace Eu4ToVic2
 				{
 					DisplayNoun = primaryCulture.DisplayName.Substring(0, primaryCulture.DisplayName.Length - 3);
 				}
-				else if(primaryCulture.DisplayName.Last() == 'e' )
+				else if (primaryCulture.DisplayName.Last() == 'e')
 				{
 					DisplayNoun = primaryCulture.DisplayName;
-				} else if(primaryCulture.DisplayName.Last() == 'r' &&  "aeiou".Contains(primaryCulture.DisplayName[primaryCulture.DisplayName.Length - 2]))
+				}
+				else if (primaryCulture.DisplayName.Last() == 'r' && "aeiou".Contains(primaryCulture.DisplayName[primaryCulture.DisplayName.Length - 2]))
 				{
 					DisplayNoun = primaryCulture.DisplayName + "ia";
 				}
@@ -230,7 +252,7 @@ namespace Eu4ToVic2
 			return template.Replace("%TAG%", CountryTag).Replace("%CULTURE%", PrimaryCulture);
 		}
 
-		public PdxSublist GetHistoryCountryFile()
+		public PdxSublist GetHistoryCountryFile(Vic2World world)
 		{
 			var data = new PdxSublist(null);
 			data.AddValue("capital", Capital.ToString());
@@ -272,7 +294,7 @@ namespace Eu4ToVic2
 				data.AddValue("schools", Enum.GetName(typeof(TechSchool), TechSchools.TechSchool));
 			}
 
-			if (FemaleLeaders)
+			if (FemaleLeaders && (Reforms.vote_franschise == vote_franschise.universal_voting || Reforms.vote_franschise == vote_franschise.universal_weighted_voting))
 			{
 				var entry = new PdxSublist();
 				entry.AddValue("decision", "enact_female_suffrage");
@@ -538,9 +560,9 @@ namespace Eu4ToVic2
 
 		internal void CreateFlag(string path, string type)
 		{
-			if (type == "republic")
+			if (type == "republic" || type == string.Empty)
 			{
-				TGAWriter.WriteTricolourTGA(path, MapColour, new Colour(255, 255, 255), new Colour(255, 255, 0));
+				TGAWriter.WriteTricolourTGA(path, MapColour, new Colour(255, 255, 255), new Colour(200, 200, 0));
 			}
 			else {
 				TGAWriter.WriteUniformTGA(path, MapColour);

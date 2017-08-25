@@ -33,6 +33,7 @@ primary = {
 	mexican = MEX
 	brazilian = BRZ
 	finnish = FIN
+	breton = BRI
 }
 
 

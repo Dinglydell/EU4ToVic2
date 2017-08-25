@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PdxFile;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +11,7 @@ namespace Eu4ToVic2
 	{
 		private string primaryKey;
 		private List<Eu4Culture> eu4Cultures;
+		public bool isNeoCulture;
 		public string Name { get; set; }
 		public string DisplayName { get; set; }
 		public Vic2Country PrimaryNation { get; set; }
@@ -20,7 +22,7 @@ namespace Eu4ToVic2
 		public List<string> LastNames { get; set; }
 		public Vic2CultureGroup Group { get; set; }
 
-		public Vic2Culture(string eu4Name, Vic2World vic2World, string vic2Name, Vic2CultureGroup group)
+		public Vic2Culture(string eu4Name, Vic2World vic2World, string vic2Name, Vic2CultureGroup group, string prefix, bool neoCulture = false)
 		{
 			
 			Group = group;
@@ -29,9 +31,18 @@ namespace Eu4ToVic2
 			World = vic2World;
 			eu4Cultures = new List<Eu4Culture>();
 			eu4Cultures.Add(vic2World.Eu4Save.Cultures[eu4Name]);
-			DisplayName = eu4Cultures[0].DisplayName;
+			var display = string.Empty;
+			if (isNeoCulture)
+			{
+				var culture = vic2World.Cultures[vic2World.V2Mapper.GetV2Culture(eu4Cultures[0].Name)];
+				display = culture.DisplayName;
+			} else
+			{
+				display = eu4Cultures[0].DisplayName;
+			}
+			DisplayName = (string.IsNullOrEmpty(prefix) ? string.Empty : (prefix + "-")) + display;
 			FirstNames = eu4Cultures[0].MaleNames.ToList();
-
+			isNeoCulture = neoCulture;
 			
 			LastNames = eu4Cultures[0].DynastyNames;
 			if (vic2World.PrimaryNations)
@@ -39,7 +50,6 @@ namespace Eu4ToVic2
 				SetupPrimaryNation(vic2World);
 			}
 		}
-
 		private bool isUnique(int r, int g, int b, byte threshhold)
 		{
 			
@@ -59,7 +69,7 @@ namespace Eu4ToVic2
 			return true;
 		}
 
-		public Vic2Culture(string name, Vic2World vic2World, Vic2CultureGroup group) : this(name, vic2World, name, group)
+		public Vic2Culture(string name, Vic2World vic2World, Vic2CultureGroup group) : this(name, vic2World, name, group, "")
 		{
 
 		}
@@ -88,6 +98,14 @@ namespace Eu4ToVic2
 
 		public void SetupPrimaryNation(Vic2World world)
 		{
+			if(Name == "british_north_america")
+			{
+				Console.WriteLine();
+			}
+			//if(isNeoCulture)
+			//{
+			//	return;
+			//}
 			if (world.CultureNations.GetSublist("except").Values.Contains(Name))
 			{
 				// this culture is blacklisted
@@ -101,10 +119,18 @@ namespace Eu4ToVic2
 			{
 				PrimaryNation = world.Vic2Countries.Find(c => c.CountryTag == primaryKey) ?? new Vic2Country(world, primaryKey, this);
 			}
-			else if (eu4Cultures.Count == 1 && eu4Cultures[0].PrimaryNation != null)
+			else if (eu4Cultures.Count == 1 && (eu4Cultures[0].PrimaryNation != null || isNeoCulture))
 			{
-				PrimaryNation = world.GetCountry(eu4Cultures[0].PrimaryNation) ?? new Vic2Country(world, world.V2Mapper.GetV2Country(eu4Cultures[0].PrimaryNation), this);
-			} else if(Group.Union == null)
+				if (isNeoCulture)
+				{
+					//find colonial nation matching the culture-region
+					PrimaryNation = world.Vic2Countries.Where(c => (c.Eu4Country?.Overlord ?? string.Empty) == PrimaryNation?.Eu4Country?.CountryTag && c.Eu4Country.IsColonialNation && world.Eu4Save.Continents.Where(cul => cul.Value == eu4Cultures[0].Continent && cul.Value.Provinces.Contains(c.Capital)).Count() != 0).FirstOrDefault();
+				} else if (eu4Cultures[0].PrimaryNation != null)
+				{
+					PrimaryNation = world.GetCountry(eu4Cultures[0].PrimaryNation) ?? new Vic2Country(world, world.V2Mapper.GetV2Country(eu4Cultures[0].PrimaryNation), this);
+				}
+				
+			} else if(Group.Union == null && !isNeoCulture)
 			{
 				var tag = 'P' + world.NumCultureNations.ToString("D2");
 				world.NumCultureNations++;
@@ -239,9 +265,13 @@ namespace Eu4ToVic2
 			DisplayName = group.DisplayName;
 		}
 
-		public Vic2Culture AddCulture(string eu4Culture, Vic2World vic2World, string vic2Name = null)
+		public Vic2Culture AddCulture(string eu4Culture, Vic2World vic2World, string vic2Name = null, string prefix = "", bool neoCulture = false)
 		{
-			var culture = new Vic2Culture(eu4Culture, vic2World, vic2Name, this);
+			if(vic2Name == "british_north_america")
+			{
+				Console.WriteLine();
+			}
+			var culture = new Vic2Culture(eu4Culture, vic2World, vic2Name, this, prefix, neoCulture);
 			Cultures.Add(culture);
 			return culture;
 		}

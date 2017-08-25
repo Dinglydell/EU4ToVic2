@@ -98,7 +98,7 @@ ideas = {
 		religious_policy = -0.25
 		citizenship_policy = -0.25
 		war_policy = -0.125
-		#vote_franschise = 0.5
+		vote_franschise = 0.5
 		
 		press_rights = 0.625
 		literacy = 1

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PdxFile;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -69,6 +70,8 @@ namespace Eu4ToVic2
 		public static readonly string[] INSTITUTION_NAMES = new string[] { "feudalism", "renaissance", "new_world_i", "printing_press", "global_trade", "manufactories", "enlightenment" };
 		public bool Exists { get; set; }
 
+		public Eu4Save Save { get; set; }
+
 		public string DisplayNoun { get; set; }
 		public string DisplayAdj { get; set; }
 
@@ -77,6 +80,7 @@ namespace Eu4ToVic2
 		public Dictionary<string, bool> Institutions { get; private set; }
 		public string CountryTag { get; set; }
 		public string Overlord { get; set; }
+		public List<string> Subjects { get; set; }
 		public float LibertyDesire { get; set; }
 
 		public int Capital { get; set; }
@@ -110,6 +114,19 @@ namespace Eu4ToVic2
 		public float Corruption { get; set; }
 		public float Mercantilism { get; private set; }
 
+		public int Development { get
+			{
+				return Save.Provinces.Where(p => p.Value.Owner == this).Sum(p => p.Value.Development);
+			}
+		}
+
+		public int GreatPowerScore
+		{
+			get {
+				return (Development + Subjects.Sum(s => Save.Countries[s].Development) / 2) / (int)(1 + 0.5 * Institutions.Count(i => !i.Value));
+			}
+		}
+
 		public Dictionary<string, byte> Ideas { get; set; }
 
 		public string Government { get; private set; }
@@ -123,6 +140,7 @@ namespace Eu4ToVic2
 
 		public Eu4Country(PdxSublist country, Eu4Save save)
 		{
+			Save = save;
 			CountryTag = country.Key;
 			Opinions = country.GetSublist("opinion_cache").Values.Select(int.Parse).ToList();
 			//Console.WriteLine($"Loading {CountryTag}...");
@@ -145,6 +163,14 @@ namespace Eu4ToVic2
 			if (country.KeyValuePairs.ContainsKey("overlord"))
 			{
 				Overlord = country.GetString("overlord").Replace("\"", string.Empty);
+			}
+			Subjects = new List<string>();
+			if (country.Sublists.ContainsKey("subjects"))
+			{
+				country.Sublists["subjects"].Values.ForEach(s =>
+				{
+					Subjects.Add(s);
+				});
 			}
 			if (country.KeyValuePairs.ContainsKey("liberty_desire"))
 			{

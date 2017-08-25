@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PdxFile;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -38,6 +39,10 @@ namespace Eu4ToVic2
 	{
 		private Dictionary<string, string> Country { get; set; }
 		public Dictionary<string, string> Culture { get; set; }
+		/// <summary>
+		/// Maps regular a generated overseas culture to its regular vic2 version
+		/// </summary>
+		public Dictionary<string, string> NeoCultures { get; set; }
 		private Dictionary<string, string> Religion { get; set; }
 		private Dictionary<string, string> Government { get; set; }
 		public List<Monarchy> Monarchies { get; set; }
@@ -51,6 +56,7 @@ namespace Eu4ToVic2
 			//instance = this;
 			Country = Mappings("country_mappings.txt");
 			Culture = Mappings("cultureMap.txt");
+			NeoCultures = new Dictionary<string,string>();
 			Religion = Mappings("religionMap.txt");
 			var gov = MappingsFile("governmentMapping.txt");
 			Government = Mappings(gov);
@@ -105,9 +111,25 @@ namespace Eu4ToVic2
 		//	}
 		//}
 
-		public string GetV2Culture(string eu4Culture)
+		public string GetV2Culture(string eu4Culture, Eu4Province prov = null)
 		{
 			var culture = Map(Culture, eu4Culture);
+			if (prov != null && World.Eu4Save.Cultures[eu4Culture].Continent != null && World.Eu4Save.Cultures[eu4Culture].Continent != prov.Continent && prov.OriginalCulture != eu4Culture)
+			{
+				// different cultures for off colonies
+				var neoEu4Culture = $"{eu4Culture}:{prov.Continent.Name}";
+				var neoCulture = Map(Culture, neoEu4Culture);
+				if (neoCulture == null)
+				{
+					// todo: fix what this will do to nations on borders between continents such as the ottomans
+					neoCulture = World.GenerateCulture(eu4Culture, culture + '_' + prov.Continent.Name + 'n', World.Eu4Save.Localisation[prov.Continent.Name], true);
+
+					NeoCultures[neoCulture] = culture;
+					Culture.Add(neoEu4Culture, neoCulture);
+				}
+				return neoCulture;
+			}
+			
 			if (culture == null || !World.Cultures.ContainsKey(culture))
 			{
 				culture = World.GenerateCulture(eu4Culture, culture);

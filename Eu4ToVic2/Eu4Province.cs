@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PdxFile;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,9 +24,17 @@ namespace Eu4ToVic2
 		public Dictionary<DateTime, string> ReligiousHistory { get; set; }
 
 		public int FortLevel { get; set; }
+
 		public int BaseTax { get; set; }
 		public int BaseProduction { get; set; }
 		public int BaseManpower { get; set; }
+		public int Development
+		{
+			get
+			{
+				return BaseTax + BaseProduction + BaseManpower;
+			}
+		}
 
 		public string Estate { get; set; }
 
@@ -36,6 +45,8 @@ namespace Eu4ToVic2
 		public Eu4Area Area { get; set; }
 
 		public bool IsState { get; set; }
+		public Eu4Continent Continent { get; set; }
+		public string OriginalCulture { get; internal set; }
 
 		public Eu4Province(PdxSublist province, Eu4Save save)
 		{
@@ -46,9 +57,23 @@ namespace Eu4ToVic2
 			}
 			var institutions = province.GetSublist("institutions");
 			Institutions = institutions.Values.Select(ins => float.Parse(ins)).ToList();
-
-			Area = save.Areas.Values.Single(a => a.Provinces.Contains(ProvinceID));
+			try
+			{
+				Area = save.Areas.Values.Single(a => a.Provinces.Contains(ProvinceID));
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"WARNING: {ProvinceID} exists in multiple areas!");
+				var areas = save.Areas.Values.Where(a => a.Provinces.Contains(ProvinceID));
+				foreach (var area in areas)
+				{
+					Console.WriteLine($"{ProvinceID} exists in {area.Name}");
+				}
+				Area = areas.Last();
+			}
 			IsState = Owner?.States.Contains(Area) ?? false;
+
+			Continent = save.Continents.Values.Single(c => c.Provinces.Contains(ProvinceID));
 
 			Cores = new List<Eu4Country>();
 
@@ -62,6 +87,13 @@ namespace Eu4ToVic2
 
 			var history = province.GetSublist("history");
 			CulturalHistory = AddHistory(history, "culture");
+			if(CulturalHistory.Count == 0)
+			{
+				OriginalCulture = Culture;
+			} else
+			{
+				OriginalCulture = CulturalHistory.OrderBy(entry => entry.Key.Ticks).First().Value;
+			}
 			ReligiousHistory = AddHistory(history, "religion");
 
 			//Culture = CulturalHistory.Last().Value;
@@ -117,15 +149,15 @@ namespace Eu4ToVic2
 			foreach (var entry in history.Sublists)
 			{
 				var sub = entry.Value;
-					if (sub.KeyValuePairs.ContainsKey(type))
-					{
+				if (sub.KeyValuePairs.ContainsKey(type))
+				{
 
-						var date = PdxSublist.ParseDate(sub.Key);
-						sub.KeyValuePairs.ForEach(type, v =>
-						{
-							storedHistory[date] = v;
-						});
-					}
+					var date = PdxSublist.ParseDate(sub.Key);
+					sub.KeyValuePairs.ForEach(type, v =>
+					{
+						storedHistory[date] = v;
+					});
+				}
 			}
 			return storedHistory;
 
