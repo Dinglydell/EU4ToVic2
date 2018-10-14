@@ -1,1 +1,42 @@
+# eu4 culture/group -> v2 culture group
+
 link = { eu4 = latin v2 = italian }
+
+link = { eu4 = british v2 = british }
+
+link = { eu4 = germanic v2 = germanic }
+
+link = { eu4 = scandinavian v2 = scandinavian }
+
+# disclaimer: this one is not a group
+link = { eu4 = gaelic v2 = irish }
+
+link = { eu4 = iberian	v2 = iberian }
+
+link = { eu4 = french v2 = french }
+
+link = { eu4 = finno_ugric eu4 = east_slavic v2 = east_slavic }
+
+link = { eu4 = south_slavic v2 = south_slavic }
+
+link = { eu4 = czech eu4 = schlesian eu4 = slovak v2 = czecho_slovak_culture_group }
+
+link = { eu4 = polish v2 = polish_culture_group }
+
+link = { eu4 = transylvanian eu4 = romanian v2 = pan_romanian }
+
+link = { eu4 = hungarian v2 = hungarian_culture_group }
+
+link = { eu4 = baltic v2 = baltic }
+
+link = { eu4 = byzantine eu4 = caucasian v2 = levantine }
+
+link = { eu4 = turko_semitic v2 = turko_semitic }
+
+link = { eu4 = maghrebi v2 = arab }
+
+link = { eu4 = iranian	v2 = iranian_turanian }
+
+link = { eu4 = altaic v2 = central_asian }
+
+link = { eu4 = eastern_aryan eu4 = hindusthani eu4 = dravidian eu4 = central_indic v2 = south_asian }

@@ -95,6 +95,7 @@ ideas = {
 		NV_order = -1
 		UH_liberal = 1
 		NV_equality = 0.5
+		NV_liberty = 0.5
 		religious_policy = -0.25
 		citizenship_policy = -0.25
 		war_policy = -0.125
@@ -240,7 +241,7 @@ ideas = {
 	
 	humanist_ideas = {
 		NV_equality = 1
-		NV_liberty = 1
+		NV_liberty = 0.5
 		NV_order = -1
 		UH_liberal = 1
 		religious_policy = -2
@@ -309,12 +310,19 @@ country_flags = {
 	hire_privateers = {
 		trade_policy = 3
 	}
+	
+	liberal_constitution = {
+		UH_liberal = 5
+		plurality = 1
+		consciousness = 0.5
+	}
 }
 
 religion = {
 	cathar = {
 		female_leaders = 1
 		war_policy = -1
+		NV_equality = 1
 	}
 	sunni = {
 		religious_policy = 1
@@ -434,7 +442,7 @@ policies = {
 	}
 	
 	public_welfare_act = {
-		health_care = 5
+		health_care = 10
 	}
 	
 	the_dissolution_act  = {
@@ -495,9 +503,13 @@ policies = {
 		citizenship_policy = -5
 		NV_equality = 3
 	}
+	native_assimilation_act = {
+		citizenship_policy = -3
+		NV_equality = 1
+	}
 	the_education_act  = {
 		school_reforms = 10
-		literacy = 5
+		literacy = 10
 		UH_liberal = 3
 	}
 	
@@ -515,14 +527,16 @@ policies = {
 	full_sovereignty_act  = {
 		NV_liberty = 3
 	}
+	modern_firearm_techniques = {
+		war_policy = 1
+	}
 	
 }
 
 # arbitrary values that are scaled. every modifier in here is multiplied by the value before being applied
 # some values are manipulated first (eg. legitimacy -> (legitimacy - 50) * modifier
 values = {
-	mercantilism = {
-		
+	mercantilism = {		
 		trade_policy = 0.1
 	}
 	
@@ -531,7 +545,7 @@ values = {
 		# this means the value is subtracted by 50 before multiplying, such that values below 50 count as a negative
 		# a value can have multiple entries with different averages
 		average = 50
-		consciousness = -0.01	
+		consciousness = -0.02	
 	}
 	
 	# each value below 50 counts as negative
@@ -540,25 +554,25 @@ values = {
 		UH_liberal = 1
 		UH_reactionary = -1
 		consciousness = 0.01
-		press_rights = 0.1
-		political_parties = 0.1
+		press_rights = 0.2
+		political_parties = 0.2
 	}
 	
 	stability = {
 		militancy = -0.1
 	}
 	
-	#absolutism = {
-	#	average = 20
-	#	UH_liberal = -0.1
-	#	UH_reactionary = 0.1
-	#	NV_order = 0.05
-	#	NV_liberty = 0.05
-	#	political_parties = -0.1
-	#	upper_house_composition = -0.1
-	#}
+	absolutism = {
+		average = 25
+		UH_liberal = -0.1
+		UH_reactionary = 0.1
+		NV_order = 0.05
+		NV_liberty = -0.05
+		political_parties = -0.1
+		upper_house_composition = -0.1
+	}
 	
-	# todo
+	
 	adm_tech = {
 		average = 28
 		industry_tech = 2
@@ -577,17 +591,41 @@ values = {
 	}
 	
 	
+	#todo
+	innovativeness = {
+		average = 50
+		plurality = 0.1
+		
+	}
+	
 }
 
 
 institutions = {
 	enlightenment = {
 		UH_liberal = 5
-		plurality = 4
+		plurality = 10
 		consciousness = 4
+		literacy = 2
+	}
+	printing_press = {
+		plurality = 2
+		consciousness = 0.5
+		literacy = 2
 	}
 	renaissance = {
 		plurality = 1
-		consciousness = 1
+		consciousness = 0.5
+		literacy = 1
+	}
+}
+
+
+# reforms, political parties, tech and female leaders currently not available here
+province = { # will be adjusted based on number of provinces
+	buildings = {
+		university = {
+			literacy = 50
+		}
 	}
 }

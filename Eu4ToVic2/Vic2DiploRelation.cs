@@ -1,4 +1,5 @@
-﻿using PdxFile;
+﻿using Eu4Helper;
+using PdxFile;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,9 +17,11 @@ namespace Eu4ToVic2
 		public V2Relation Type { get; set; }
 		public Vic2Country First { get; set; }
 		public Vic2Country Second { get; set; }
+		public Vic2World World { get; private set; }
 
 		public Vic2DiploRelation(Eu4DiploRelation eu4, Vic2World world)
 		{
+			World = world;
 			Type = V2Relation.invalid;
 			switch (eu4.Type)
 			{
@@ -43,7 +46,7 @@ namespace Eu4ToVic2
 
 			data.AddValue("first", First.CountryTag);
 			data.AddValue("second", Second.CountryTag);
-			data.AddValue("start_date", "1836.1.1");
+			data.AddValue("start_date", World.StartDate);
 			data.AddValue("end_date", "1936.1.1");
 
 			return data;

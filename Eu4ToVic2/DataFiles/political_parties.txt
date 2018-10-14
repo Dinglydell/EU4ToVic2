@@ -31,7 +31,7 @@ conservative = {
 	citizenship_policy = 0
 }
 reactionary = {
-	economic_policy	= -10
+	economic_policy	= -6
 	trade_policy = 10
 	religious_policy = 12
 	war_policy = 10
@@ -52,7 +52,7 @@ communist = {
 	citizenship_policy = -15
 }
 fascist = {
-	economic_policy	= -10
+	economic_policy	= -5
 	trade_policy = 20
 	religious_policy = 20
 	war_policy = 20

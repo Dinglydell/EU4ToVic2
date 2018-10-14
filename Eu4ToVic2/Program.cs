@@ -12,14 +12,14 @@ namespace Eu4ToVic2
 		static void Main(string[] args)
 		{
 
-			
-			
+
+			var keepStartDate = !args.Contains("1836");
 			//TGAWriter.WriteTricolourTGA("test.tga", new Colour(0, 85, 164), new Colour(255, 255, 255), new Colour(239, 65, 53));
 
-			var save = new Eu4Save("uncompressed 2.eu4", @"C:\Users\Blake\Documents\Paradox Interactive\Crusader Kings II\eu4_export\mod\Converted_England1444_11_11");
+			var save = new Eu4Save("Grindia.eu4", @"C:\Users\Blake\Documents\Paradox Interactive\Europa Universalis IV\mod\converter_test");
 
 			//Console.WriteLine(save.RootList);
-			var V2World = new Vic2World(save);
+			var V2World = new Vic2World(save, keepStartDate);
 
 
 			Console.Read();

@@ -1,4 +1,5 @@
-﻿using PdxFile;
+﻿using Eu4Helper;
+using PdxFile;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,43 +10,31 @@ using System.Threading.Tasks;
 
 namespace Eu4ToVic2
 {
-	public class Eu4Save
+	public class Eu4Save : Eu4WorldBase
 	{
-		public static readonly string GAME_PATH = @"C:\Program Files (x86)\Steam\steamapps\common\Europa Universalis IV\";
+		
 
-		public string ModPath { get; set; }
-		public string PlayerTag { get; set; }
+		//public string ModPath { get; set; }
 		public PdxSublist RootList { get; set; }
 
-		public Dictionary<string, Eu4Religion> Religions { get; set; }
-		public Dictionary<string, Eu4ReligionGroup> ReligiousGroups { get; set; }
-
-		public List<string> Buildings { get; set; }
-		public Dictionary<string, Eu4Country> Countries { get; set; }
-		public Dictionary<int, Eu4Province> Provinces { get; private set; }
-		public Dictionary<string, Eu4Culture> Cultures { get; private set; }
-		public Dictionary<string, Eu4CultureGroup> CultureGroups { get; private set; }
-		public Dictionary<string, string> Localisation { get; private set; }
 		internal List<Eu4DiploRelation> Relations { get; private set; }
-		public Dictionary<string, Eu4Area> Areas { get; private set; }
-		public Dictionary<string, Eu4Region> Regions { get; private set; }
-		public Dictionary<string, Eu4Continent> Continents { get; set; }
 
-		public Dictionary<string, PdxSublist> CountryHistory { get; set; }
-		public Dictionary<string, PdxSublist> ProvinceHistory { get; set; }
-		public Eu4Country GreatestPower { get; private set; }
+		public string Version { get; set; }
+		public string Date { get; private set; }
 
-		public Eu4Save(string filePath, string modFilePath)
+		public Eu4Save(string filePath, string modFilePath): base(modFilePath)
 		{
 			
-			ModPath = modFilePath;
-			LoadHistory();
-			LoadRegions();
-			LoadBuildingData();
-			LoadLocalisation();
+			//ModPath = modFilePath;
+			//LoadHistory();
+			//LoadRegions();
+			//LoadBuildingData();
+			//LoadLocalisation();
 			ReadSave(filePath);
+			Date = RootList.KeyValuePairs["date"];
 			PlayerTag = RootList.GetString("player");
-			
+			var versionSub = RootList.Sublists["savegame_version"];
+			Version = $"{versionSub.FloatValues["first"].Single()}.{versionSub.FloatValues["second"].Single()}.0.0";
 			//LoadCountryTags();
 			LoadCountryData();
 			LoadDiploRelations();
@@ -53,9 +42,9 @@ namespace Eu4ToVic2
 			LoadProvinceData();
 			GreatestPower = Countries.OrderByDescending(c => c.Value.GreatPowerScore).First().Value;
 			Console.WriteLine("The greatest power is " + GreatestPower.CountryTag);
-			LoadReligionData();
-			LoadCultureData();
-			
+			//LoadReligionData();
+			//LoadCultureData();
+			PostInitLoad();
 			Console.WriteLine("EU4 data loaded.");
 		}
 
@@ -107,7 +96,10 @@ namespace Eu4ToVic2
 			foreach (var con in continents.Sublists)
 			{
 				//Areas[ar.Key] = new HashSet<int>(ar.Value.FloatValues.Values.SelectMany(f => f.Select(e => (int)e)));
-				Continents[con.Key] = new Eu4Continent(con.Key, con.Value);
+				if (con.Key != "island_check_provinces")
+				{
+					Continents[con.Key] = new Eu4Continent(con.Key, con.Value);
+				}
 			}
 
 
@@ -280,7 +272,7 @@ namespace Eu4ToVic2
 		private void LoadCountryData()
 		{
 			Console.WriteLine("Loading countries...");
-			Countries = new Dictionary<string, Eu4Country>();
+			Countries = new Dictionary<string, Eu4CountryBase>();
 			var countries = RootList.GetSublist("countries");
 			countries.ForEachSublist(countryList =>
 			{
@@ -301,7 +293,7 @@ namespace Eu4ToVic2
 		private void LoadProvinceData()
 		{
 			Console.WriteLine("Loading provinces...");
-			Provinces = new Dictionary<int, Eu4Province>();
+			Provinces = new Dictionary<int, Eu4ProvinceBase>();
 			var provinces = RootList.GetSublist("provinces");
 			provinces.ForEachSublist(provList =>
 			{
@@ -340,33 +332,7 @@ namespace Eu4ToVic2
 		//	Console.WriteLine(CountryTags[0]);
 		//}
 
-		public List<string> GetFilesFor(string path)
-		{
-			var modPath = Path.Combine(ModPath, path);
-			var gameFiles = Directory.GetFiles(Path.Combine(GAME_PATH, path));
-			var modFileNames = Directory.Exists(modPath) ? Directory.GetFiles(modPath).Select(Path.GetFileName) : new string[] { };
-			var files = new List<string>();
-			foreach (var name in gameFiles)
-			{
-				if (modFileNames.Contains(Path.GetFileName(name)))
-				{
-					files.Add(Path.Combine(modPath, Path.GetFileName(name)));
-				} else
-				{
-					files.Add(name);
-				}
-			}
-			foreach (var name in modFileNames)
-			{
-				var modFilePath = Path.Combine(modPath, Path.GetFileName(name));
-				if (!files.Contains(modFilePath))
-				{
-					files.Add(modFilePath);
-				}
-			}
-			return files;
-		}
-
+		
 		private void ReadSave(string filePath)
 		{
 			Console.WriteLine("Reading save file...");
@@ -394,10 +360,7 @@ namespace Eu4ToVic2
 			//	
 		}
 
-		public Eu4Religion GetReligion(string religion)
-		{
-			return Religions[religion];
-		}
+		
 
 		//private PdxSublist RunLine(string line, PdxSublist currentList)
 		//{

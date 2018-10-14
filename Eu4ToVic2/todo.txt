@@ -1,0 +1,11 @@
+﻿-dynamic start date
+
+-liberal revolutions of 1848 on a different continent
+
+-fix culture nation decisions
+
+-do something about the fact that dynamic ck2 cultures create their own culture-country in vic2
+
+-adjust immigration factor to the new world?
+
+-investigate core province issue

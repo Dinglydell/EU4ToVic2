@@ -1,4 +1,5 @@
-﻿using PdxFile;
+﻿using Eu4Helper;
+using PdxFile;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,15 +8,11 @@ using System.Threading.Tasks;
 
 namespace Eu4ToVic2
 {
-	public enum Relation {
-		alliance, dependency, military_access
-	}
-
-	public class Eu4DiploRelation
+	public class Eu4DiploRelation: IEu4DiploRelation
 	{
 		public Relation Type { get; set; }
-		public Eu4Country First { get; set; }
-		public Eu4Country Second { get; set; }
+		public Eu4CountryBase First { get; set; }
+		public Eu4CountryBase Second { get; set; }
 
 		public string SubjectType { get; set; }
 		public Eu4DiploRelation(PdxSublist data, Eu4Save save)

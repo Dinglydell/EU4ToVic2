@@ -1,7 +1,9 @@
-﻿using PdxFile;
+﻿using Eu4Helper;
+using PdxFile;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -12,7 +14,7 @@ namespace Eu4ToVic2
 {
 	public class Vic2Province
 	{
-		public List<Eu4Province> Eu4Provinces;
+		public List<Eu4ProvinceBase> Eu4Provinces;
 
 		public string Subfolder { get; set; }
 		public string FileName { get; set; }
@@ -25,12 +27,18 @@ namespace Eu4ToVic2
 		public string TradeGoods { get; set; }
 		public int LifeRating { get; set; }
 
-		public int FortLevel { get; set; }
+		public float FortLevel { get; set; }
+
+		public float RailroadLevel { get; set; }
 
 		public HashSet<string> Factories { get; set; }
 
 		public PopPool Pops { get; set; }
 		public Vic2World World { get; private set; }
+		public int SiblingProvinces { get; private set; }
+		public Point MapPosition { get; private set; }
+
+		public Eu4Religion MajorityReligion { get; set; }
 
 		/// <summary>
 		/// 
@@ -40,12 +48,12 @@ namespace Eu4ToVic2
 		/// <param name="vic2World">The world object the province exists in</param>
 		/// <param name="siblingProvinces">The number of other vic2 provinces that eu4Provinces has been mapped to</param>
 		/// <param name="eu4Provinces">List of eu4 provinces mapped to this province</param>
-		public Vic2Province(int provID, PdxSublist defaultProvince, Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
+		public Vic2Province(int provID, PdxSublist defaultProvince, Vic2World vic2World, int siblingProvinces, List<Eu4ProvinceBase> eu4Provinces)
 		{
 			DoSetup(provID, defaultProvince, vic2World, siblingProvinces, eu4Provinces);
 		}
 
-		private void DoSetup(int provID, PdxSublist defaultProvince, Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
+		private void DoSetup(int provID, PdxSublist defaultProvince, Vic2World vic2World, int siblingProvinces, List<Eu4ProvinceBase> eu4Provinces)
 		{
 			World = vic2World;
 			Subfolder = Path.GetFileName(Path.GetDirectoryName(defaultProvince.Key));
@@ -54,13 +62,17 @@ namespace Eu4ToVic2
 			ProvID = provID;
 			TradeGoods = defaultProvince.GetString("trade_goods");
 			LifeRating = (int)defaultProvince.GetFloat("life_rating");
-			Pops = new PopPool(vic2World);
+			Pops = new PopPool(vic2World, this);
 			Factories = new HashSet<string>();
-
+			SiblingProvinces = siblingProvinces;
 			if(ProvID == 222)
 			{
 				Console.WriteLine();
 			}
+			var mapPos = vic2World.Vic2ProvPositions[ProvID.ToString()];
+			var mapX = mapPos.Sum(p => p.X) / mapPos.Count;
+			var mapY = mapPos.Sum(p => p.Y) / mapPos.Count;
+			MapPosition = new Point(mapX, mapY);
 			if (eu4Provinces.Count > 0)
 			{
 				// most common owner
@@ -70,45 +82,22 @@ namespace Eu4ToVic2
 				{
 					Owner = vic2World.GetCountry(Owner.Eu4Country.Overlord);
 				}
+				if (Owner != null)
+				{
+					Owner.NumProvinces++;
+				}
 				// all countries that have full cores in any of the eu4 counterparts gets cores here
 				Cores = eu4Provinces.Where(p => p.IsState).SelectMany(p => p.Cores).Select(c => vic2World.GetCountry(c)).Distinct().ToList();
 				//Cores = new List<Vic2Country>();
+				var r = eu4Provinces.GroupBy(p => p.Religion).OrderByDescending(g => g.Sum(p => p.Development)).First().First().Religion;
+				if (r != "no_religion")
+				{
+					MajorityReligion = World.Eu4Save.Religions[r];
+				}
+				
 				FortLevel = eu4Provinces.Any(p => p.FortLevel > 6) ? 1 : 0;
 
-				CalcEffects(vic2World, siblingProvinces, eu4Provinces);
-
-				var largeCultures = Pops.GetLargeCultures(0.4f);
-				// TODO: dynamically create countries that don't have a primary nation in vic2
-				foreach (var cul in largeCultures)
-				{
-					vic2World.CultureNations.KeyValuePairs.ForEach(cul, tag =>
-					{
-						Cores.Add(vic2World.Vic2Countries.Find(c => c.CountryTag == tag) ?? new Vic2Country(vic2World, tag, vic2World.Cultures[cul]));
-					});
-					// add neoculture as accepted culture
-					if (World.V2Mapper.NeoCultures.ContainsKey(cul) && World.V2Mapper.NeoCultures[cul] == Owner.PrimaryCulture)
-					{
-						if (!Owner.AcceptedCultures.Contains(cul))
-						{
-							Owner.AcceptedCultures.Add(cul);
-						}
-					}
-					if (vic2World.Cultures[cul].PrimaryNation == null)
-					{
-						if (vic2World.Cultures[cul].Group.Union == null)
-						{
-
-
-						}
-					}
-					else {
-						Cores.Add(vic2World.Cultures[cul].PrimaryNation);
-					}
-					if (vic2World.Cultures[cul].Group.Union != null)
-					{
-						Cores.Add(vic2World.Cultures[cul].Group.Union);
-					}
-				}
+				
 			}
 			else
 			{
@@ -116,6 +105,55 @@ namespace Eu4ToVic2
 			}
 
 
+		}
+
+		public void PostInitialise()
+		{
+			if (Eu4Provinces.Count > 0)
+			{
+				CalcEffects(World, SiblingProvinces, Eu4Provinces);
+
+				var largeCultures = Pops.GetLargeCultures(0.4f);
+				// TODO: dynamically create countries that don't have a primary nation in vic2
+				foreach (var cul in largeCultures)
+				{
+					World.CultureNations.KeyValuePairs.ForEach(cul, tag =>
+					{
+						Cores.Add(World.Vic2Countries.Find(c => c.CountryTag == tag) ?? new Vic2Country(World, tag, World.Cultures[cul]));
+					});
+					// add neoculture as accepted culture
+					if (World.V2Mapper.NeoCultures.ContainsKey(cul) && World.V2Mapper.NeoCultures[cul] == Owner?.PrimaryCulture)
+					{
+						if (!Owner.AcceptedCultures.Contains(cul))
+						{
+							Owner.AcceptedCultures.Add(cul);
+						}
+					}
+					if (World.Cultures[cul].PrimaryNation == null)
+					{
+						if (World.Cultures[cul].Group.Union == null)
+						{
+
+
+						}
+					}
+					else {
+						Cores.Add(World.Cultures[cul].PrimaryNation);
+					}
+					if (World.Cultures[cul].Group.Union != null)
+					{
+						Cores.Add(World.Cultures[cul].Group.Union);
+					}
+				}
+			}
+			//effects on owner
+			if (Owner != null)
+			{
+				IterateEffects(World, World.CountryEffects.Sublists["province"], 1, Eu4Provinces, (effects, fromProvince) =>
+				{
+					Owner.FromProvinceEffect(effects);
+				});
+			}
 		}
 
 		public PdxSublist GetProvinceData()
@@ -135,7 +173,7 @@ namespace Eu4ToVic2
 			}
 			file.AddValue("trade_goods", TradeGoods);
 			file.AddValue("fort", FortLevel.ToString());
-
+			file.AddValue("railroad", RailroadLevel.ToString());
 			foreach (var factory in Factories)
 			{
 				var factoryData = new PdxSublist();
@@ -160,22 +198,32 @@ namespace Eu4ToVic2
 			return Pops.GetData(this);
 		}
 
-		private void CalcEffects(Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces)
+		private void CalcEffects(Vic2World vic2World, int siblingProvinces, List<Eu4ProvinceBase> eu4Provinces)
 		{
 			var factories = new Dictionary<string, float>();
 			var baseFactories = 0f;
 			//Factories = new HashSet<string>();
 			
-			IterateEffects(vic2World, siblingProvinces, eu4Provinces, (effects, fromProvince) =>
+			IterateEffects(vic2World, vic2World.ProvinceEffects, siblingProvinces, eu4Provinces, (effects, fromProvince) =>
 			{
 				CalcPopEffects(effects, fromProvince);
 				baseFactories += CalcFactoryEffects(effects, fromProvince, factories);
+				if (effects.ContainsKey("railroad")) {
+					RailroadLevel += effects["railroad"];
+				}
+				if (effects.ContainsKey("fort"))
+				{
+					RailroadLevel += effects["fort"];
+				}
 			});
-			IterateEffects(vic2World, siblingProvinces, eu4Provinces, (effects, fromProvince) =>
+			IterateEffects(vic2World, vic2World.ProvinceEffects, siblingProvinces, eu4Provinces, (effects, fromProvince) =>
 			{
 				CalcRelativePopEffects(effects, fromProvince);
 			});
 			FinaliseFactoryEffects(factories, baseFactories);
+
+			//on country
+			
 		}
 
 		private void FinaliseFactoryEffects(Dictionary<string, float> factories, float baseFactories)
@@ -208,7 +256,7 @@ namespace Eu4ToVic2
 			}
 		}
 
-		private float CalcFactoryEffects(Dictionary<string, float> effects, Eu4Province fromProvince, Dictionary<string, float> factories)
+		private float CalcFactoryEffects(Dictionary<string, float> effects, Eu4ProvinceBase fromProvince, Dictionary<string, float> factories)
 		{
 			foreach (var factory in World.Factories.Sublists["priority"].Values)
 			{
@@ -228,7 +276,7 @@ namespace Eu4ToVic2
 			return 0;
 		}
 
-		private void CalcRelativePopEffects(Dictionary<string, float> effects, Eu4Province fromProvince)
+		private void CalcRelativePopEffects(Dictionary<string, float> effects, Eu4ProvinceBase fromProvince)
 		{
 			foreach (PopType popType in Enum.GetValues(typeof(PopType)))
 			{
@@ -240,7 +288,7 @@ namespace Eu4ToVic2
 			}
 		}
 
-		private void CalcPopEffects(Dictionary<string, float> effects, Eu4Province fromProvince)
+		private void CalcPopEffects(Dictionary<string, float> effects, Eu4ProvinceBase fromProvince)
 		{
 			foreach (PopType popType in Enum.GetValues(typeof(PopType)))
 			{
@@ -252,7 +300,7 @@ namespace Eu4ToVic2
 			}
 		}
 
-		private void IterateEffects(Vic2World vic2World, int siblingProvinces, List<Eu4Province> eu4Provinces, Action<Dictionary<string, float>, Eu4Province> callback)
+		private void IterateEffects(Vic2World vic2World, PdxSublist provEffects, int siblingProvinces, List<Eu4ProvinceBase> eu4Provinces, Action<Dictionary<string, float>, Eu4ProvinceBase> callback)
 		{
 
 
@@ -263,47 +311,47 @@ namespace Eu4ToVic2
 					callback(effects, prov);
 				};
 				// development
-				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_tax", prov.BaseTax / (float)siblingProvinces);
-				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_production", prov.BaseProduction / (float)siblingProvinces);
-				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "base_manpower", prov.BaseManpower / (float)siblingProvinces);
+				vic2World.ValueEffect(provEffects, newCallback, "base_tax", prov.BaseTax / (float)siblingProvinces);
+				vic2World.ValueEffect(provEffects, newCallback, "base_production", prov.BaseProduction / (float)siblingProvinces);
+				vic2World.ValueEffect(provEffects, newCallback, "base_manpower", prov.BaseManpower / (float)siblingProvinces);
 				// total dev
-				vic2World.ValueEffect(vic2World.ProvinceEffects, newCallback, "development", (prov.BaseTax + prov.BaseProduction + prov.BaseManpower) / (float)siblingProvinces);
+				vic2World.ValueEffect(provEffects, newCallback, "development", (prov.BaseTax + prov.BaseProduction + prov.BaseManpower) / (float)siblingProvinces);
 
 				// estates
-				if (prov.Estate != null && vic2World.ProvinceEffects.Sublists["estate"].Sublists.ContainsKey(prov.Estate))
+				if (prov.Estate != null && provEffects.Sublists["estate"].Sublists.ContainsKey(prov.Estate))
 				{
-					newCallback(vic2World.ProvinceEffects.Sublists["estate"].Sublists[prov.Estate].FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum() / eu4Provinces.Count));
+					newCallback(provEffects.Sublists["estate"].Sublists[prov.Estate].FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum() / eu4Provinces.Count));
 				}
 
 
 				// province flags
-				if (vic2World.ProvinceEffects.Sublists.ContainsKey("province_flags") && prov.Flags != null)
+				if (provEffects.Sublists.ContainsKey("province_flags") && prov.Flags != null)
 				{
 					foreach (var flag in prov.Flags)
 					{
-						if (vic2World.ProvinceEffects.Sublists["province_flags"].Sublists.ContainsKey(flag))
+						if (provEffects.Sublists["province_flags"].Sublists.ContainsKey(flag))
 						{
-							newCallback(vic2World.ProvinceEffects.Sublists["province_flags"].Sublists[flag].FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum() / eu4Provinces.Count));
+							newCallback(provEffects.Sublists["province_flags"].Sublists[flag].FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum() / eu4Provinces.Count));
 						}
 					}
 				}
 			
 				// buildings
-				if (vic2World.ProvinceEffects.Sublists.ContainsKey("buildings"))
+				if (provEffects.Sublists.ContainsKey("buildings"))
 				{
 					foreach (var build in prov.Buildings)
 					{
-						if (vic2World.ProvinceEffects.Sublists["buildings"].Sublists.ContainsKey(build))
+						if (provEffects.Sublists["buildings"].Sublists.ContainsKey(build))
 						{
-							newCallback(vic2World.ProvinceEffects.Sublists["buildings"].Sublists[build].FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum() / eu4Provinces.Count));
+							newCallback(provEffects.Sublists["buildings"].Sublists[build].FloatValues.ToDictionary(effect => effect.Key, effect => effect.Value.Sum() / eu4Provinces.Count));
 						}
 					}
 
 				}
 				// from owner country 
-				if (prov.Owner != null && vic2World.ProvinceEffects.Sublists.ContainsKey("owner"))
+				if (prov.Owner != null && provEffects.Sublists.ContainsKey("owner"))
 				{
-					Vic2Country.IterateCountryEffects(vic2World, prov.Owner, vic2World.ProvinceEffects.Sublists["owner"], (effects) => { callback(effects, null); });
+					Vic2Country.IterateCountryEffects(vic2World, prov.Owner, provEffects.Sublists["owner"], (effects) => { callback(effects, null); });
 				}
 
 			}
@@ -326,10 +374,14 @@ namespace Eu4ToVic2
 				return pops.Values.ToList();
 			}
 		}
-		public PopPool(Vic2World world)
+
+		public Vic2Province province { get; private set; }
+
+		public PopPool(Vic2World world, Vic2Province province)
 		{
 			World = world;
 			pops = new Dictionary<string, Pop>();
+			this.province = province;
 			//culture = new Dictionary<Eu4Province, ValueSet<string>>();
 			//religion = new Dictionary<Eu4Province, ValueSet<string>>();
 			//foreach (var prov in eu4Provinces)
@@ -399,10 +451,10 @@ namespace Eu4ToVic2
 				return this;
 			}
 		}
-		public void AddPop(Eu4Province fromProvince, PopType type, int quantity)
+		public void AddPop(Eu4ProvinceBase fromProvince, PopType type, int quantity)
 		{
 			var history = new Dictionary<DateTime, DemographicEvent>();
-			fromProvince.CulturalHistory.ToList().ForEach(ce => history.Add(ce.Key, new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(ce.Value, fromProvince))));
+			fromProvince.CulturalHistory.ToList().ForEach(ce => history.Add(ce.Key, new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(ce.Value, fromProvince, province))));
 			fromProvince.ReligiousHistory.ToList().ForEach(re =>
 			{
 				if (history.ContainsKey(re.Key))
@@ -416,7 +468,7 @@ namespace Eu4ToVic2
 			});
 			if (history.Count == 0)
 			{
-				history[new DateTime(1444, 11, 11)] = new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(fromProvince.Culture, fromProvince)).SetReligion(World.V2Mapper.GetV2Religion(fromProvince.Religion));
+				history[new DateTime(1444, 11, 11)] = new DemographicEvent().SetCulture(World.V2Mapper.GetV2Culture(fromProvince.Culture, fromProvince, province)).SetReligion(World.V2Mapper.GetV2Religion(fromProvince.Religion));
 			}
 			var orderedHistory = history.OrderBy(he => he.Key.Ticks);
 
@@ -471,7 +523,8 @@ namespace Eu4ToVic2
 				}
 
 			}
-			var finalSince = new DateTime(1836, 1, 1) - lastEntry.Key;
+			var now = PdxSublist.ParseDate(World.StartDate);
+			var finalSince = now - lastEntry.Key;
 			// 200 years -> +50%
 			MergePops(popsList, SplitPops((int)(quantity * Math.Min(1, finalSince.Days * 6.8493150684931506849315068493151e-6)), popsList, c => majorityCulture, r => majorityReligion));
 			foreach (var pop in popsList)

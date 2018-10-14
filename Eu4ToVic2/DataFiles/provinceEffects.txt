@@ -12,6 +12,12 @@
 # factory = <value>
 # Increases the number of factories
 #
+# railroad = <value>
+# increases the level of railroad in province (TODO)
+#
+# fort = <value>
+# increases the fort level in the province
+#
 # <factory type> = <value>
 # Increases the number of a specific factory. This value is added to the total factory value first.
 
@@ -41,6 +47,12 @@ owner = {
 		}
 		not_enlightenment = {
 			factory = -10
+		}
+	}
+	ideas = {
+		quantity_ideas = {
+			relative_soldiers = 0.005
+			#relative_officers = 0.001
 		}
 	}
 }
@@ -116,7 +128,8 @@ values = {
 		average = 20
 		minimum = 0
 		artisans = 4000
-		craftsmen
+		craftsmen = 2000
+		clerks = 10
 		aristocrats = 40
 		capitalists = 50
 		clergymen = 80
@@ -154,6 +167,7 @@ values = {
 		minimum = 0
 		average = 40
 		factory = 0.05
+		railroad = 0.05
 	}
 	development = {
 		minimum = 0
@@ -164,6 +178,9 @@ values = {
 
 # TODO:
 buildings = {
+	fort_18th = {
+		fort = 1
+	}
 	workshop = {
 		relative_artisans = 0.01
 	}
@@ -186,7 +203,7 @@ buildings = {
 	}
 	
 	university = {
-		#literacy = 1
+		#literacy = 1 # this is done on a country level
 		relative_clergymen = 0.01
 		relative_clerks = 0.001
 		factory = 0.4
@@ -250,6 +267,19 @@ buildings = {
 		relative_craftsmen = 0.02
 		relative_artisans = 0.005
 	}
+	mills = {
+		paper_mill = 1
+		relative_craftsmen = 0.02
+		relative_artisans = 0.005
+	}
+	furnace = {
+		relative_labourers = 0.02
+		relative_craftsmen = 0.01
+		steel_factory = 0.25
+		glass_factory = 0.25
+		cement_factory = 0.25
+		machine_parts_factory = 0.25
+	}
 }
 
 estate = {
@@ -265,5 +295,31 @@ estate = {
 }
 
 province_flags = {
-	
+	introduction_of_coke_blast_furnaces = {
+		steel_factory = 0.5
+	}
+	metalworks_modifier = {
+		steel_factory = 0.5
+	}
+	textile_mills_modifier = {
+		dye_factory = 0.125
+		fabric_factory = 0.125
+		luxury_clothes_factory = 0.125
+		regular_clothes_factory = 0.125
+	}
+	introduction_of_watt_engine = {
+		factory = 0.5
+	}
+	introduction_of_flying_shuttle = {
+		factory = 0.5
+	}
+	introduction_of_spinning_jenny = {
+		factory = 0.5
+	}
+	canals_and_turnpikes = {
+		railroad = 1
+	}
+	impoverished_artisans = {
+		artisans = -1000
+	}
 }

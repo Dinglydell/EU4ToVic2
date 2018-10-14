@@ -1,4 +1,6 @@
-﻿using PdxFile;
+﻿using Eu4Helper;
+using PdxFile;
+using PdxUtil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -231,18 +233,23 @@ namespace Eu4ToVic2
 		public string Unit { get; set; }
 
 		public List<Vic2Culture> Cultures { get; set; }
+		public Vic2Province Centre { get; set; }
 		public string DisplayName { get; private set; }
+		public Vic2World World { get; private set; }
+		public Eu4CultureGroup Eu4Group { get; private set; }
 
-		public Vic2CultureGroup(string name)
+		public Vic2CultureGroup(string name, Vic2World world)
 		{
+			World = world;
 			Name = name;
 			Cultures = new List<Vic2Culture>();
 			// todo: better default values (dynamic?)
 			Leader = "european";
 			Unit = "EuropeanGC";
 		}
-		public Vic2CultureGroup(Vic2World world, PdxSublist data) : this(data.Key)
+		public Vic2CultureGroup(Vic2World world, PdxSublist data) : this(data.Key, world)
 		{
+			//World = world;
 			Leader = data.GetString("leader");
 			if (data.KeyValuePairs.ContainsKey("unit"))
 			{
@@ -260,8 +267,9 @@ namespace Eu4ToVic2
 			}
 		}
 
-		public Vic2CultureGroup(Eu4CultureGroup group): this(group.Name)
+		public Vic2CultureGroup(Eu4CultureGroup group, Vic2World world): this(group.Name, world)
 		{
+			Eu4Group = group;
 			DisplayName = group.DisplayName;
 		}
 
@@ -322,6 +330,121 @@ namespace Eu4ToVic2
 			{
 				culture.AddLocalisation(localisation);
 			}
+		}
+
+		/// <summary>
+		/// Would this eu4 culture map to this group?
+		/// </summary>
+		/// <returns></returns>
+		private bool DoesMap(string eu4Culture)
+		{
+			if (World.V2Mapper.GetV2CultureBase(eu4Culture) == Name)
+			{
+				return true;
+			}
+			if (Cultures.Any(c => c.Name == World.V2Mapper.GetV2CultureBase(eu4Culture)))
+			{
+				return true;
+			}
+			if (Eu4Group?.Cultures?.Any(c => c.Name == eu4Culture) ?? false)
+			{
+				return true;
+			}
+			return false;
+
+		}
+
+		internal void FindCentre()
+		{
+			var mainReligions = World.Vic2Provinces.SelectMany(p => p.Eu4Provinces).Where(p => DoesMap(p.Culture)).GroupBy(p => p.Religion).OrderByDescending(g => g.Sum(p => p.Development));
+			string mainReligion = null;
+			// if a religion is more than 50% of the dev it's the main one
+			if(mainReligions.Count() != 0 && mainReligions.First().Sum(p => p.Development) * 2 > mainReligions.Sum(g => g.Sum(p => p.Development)))
+			{
+				mainReligion = mainReligions.First().First().Religion;
+			}
+
+			var x = 0f;
+			var y = 0f;
+			var sum = 0f;
+
+			foreach (var prov in World.Vic2Provinces)
+			{
+				if(prov.Eu4Provinces.Count == 0)
+				{
+					continue;
+				}
+
+				var weight = prov.Eu4Provinces.Sum(p =>
+				{
+					var pWeight = 0f;
+					if (DoesMap(p.Culture))
+					{
+						pWeight += 5;
+					}
+					if (DoesMap(p.OriginalCulture))
+					{
+						pWeight += 2.5f;
+					}
+					if(mainReligion != null && p.Religion == mainReligion)
+					{
+						pWeight += 1;
+					}
+
+
+					return pWeight;
+				}) / prov.Eu4Provinces.Count;
+
+				x += weight * prov.MapPosition.X;
+				y += weight * prov.MapPosition.Y;
+				sum += weight;
+			}
+			x /= sum;
+			y /= sum;
+
+			Vic2Province closest = null;
+			var closeDist = int.MaxValue;
+			foreach (var prov in World.Vic2Provinces)
+			{
+				var dx = prov.MapPosition.X - (int)x;
+				var dy = prov.MapPosition.Y - (int)y;
+				var dist = dx * dx + dy * dy;
+				if (closest == null || closeDist > dist)
+				{
+					closest = prov;
+					closeDist = dist;
+				}
+			}
+
+			Console.WriteLine($"The centre of {Name} culture is {closest.FileName}");
+			Centre = closest;
+		}
+
+		internal double GetDistance(Vic2Province prov)
+		{
+			return GetDistance(prov, prov.MajorityReligion);
+		}
+
+		internal double GetDistance(Vic2Province prov, Eu4Religion religion)
+		{
+			//var religion = myReligion ?? prov.MajorityReligion;
+			var dx = prov.MapPosition.X - Centre.MapPosition.X;
+			var dy = prov.MapPosition.Y - Centre.MapPosition.Y;
+			var dist = Math.Sqrt(dx * dx + dy * dy) / 100;
+			if(religion != Centre.MajorityReligion)
+			{
+				dist += 5;
+			}
+			if (religion.Group != Centre.MajorityReligion.Group)
+			{
+				dist += 10;
+			}
+			if(prov.Owner != Centre.Owner)
+			{
+				dist += 5;
+			}
+
+			return dist;
 		}
 	}
 }

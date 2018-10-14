@@ -1,4 +1,6 @@
-﻿using PdxFile;
+﻿using Eu4Helper;
+using PdxFile;
+using PdxUtil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +21,7 @@ namespace Eu4ToVic2
 		/// Whether or not this country was generated for a culture
 		/// </summary>
 		public bool IsCultureNation { get; set; }
-		public Eu4Country Eu4Country { get; set; }
+		public Eu4CountryBase Eu4Country { get; set; }
 		public string CountryTag { get; set; }
 		public Colour MapColour { get; set; }
 		public string GraphicalCulture { get; set; }
@@ -63,11 +65,12 @@ namespace Eu4ToVic2
 
 		public bool FemaleLeaders { get; set; }
 		public IdeologyModifier BasePartyModifier { get; private set; }
+		public Vic2World World { get; private set; }
+		public int NumProvinces { get; internal set; }
 
-
-
-		public Vic2Country(Vic2World vic2World, Eu4Country eu4Country)
+		public Vic2Country(Vic2World vic2World, Eu4CountryBase eu4Country)
 		{
+			World = vic2World;
 			CountryTag = vic2World.V2Mapper.GetV2Country(eu4Country.CountryTag);
 			IsVic2Country = !vic2World.ExistingCountries.Add(CountryTag);
 			Eu4Country = eu4Country;
@@ -92,7 +95,7 @@ namespace Eu4ToVic2
 			// -100 - 100 scaled to 0 - 100
 			//Prestige = (eu4Country.Prestige + 100) / 2;
 
-			Prestige = (100 * eu4Country.GreatPowerScore) / eu4Country.Save.GreatestPower.GreatPowerScore;
+			Prestige = (100 * eu4Country.GreatPowerScore) / eu4Country.World.GreatestPower.GreatPowerScore;
 
 			LastElection = eu4Country.LastElection;
 
@@ -107,10 +110,7 @@ namespace Eu4ToVic2
 				Console.WriteLine("Uh oh");
 			}
 			//RulingParty = PoliticalParties.First(p => p.Ideology == UpperHouse.GetMode());
-			if (CountryTag == "ENG")
-			{
-				Console.WriteLine("GBR!");
-			}
+
 		}
 
 		public void AddLocalisation(Dictionary<string, string> localisation, PdxSublist localeHelper, Vic2World world)
@@ -148,11 +148,8 @@ namespace Eu4ToVic2
 		}
 		private Vic2Country(Vic2World world, string tag, IEnumerable<Vic2Country> cultureNations, Vic2Culture primaryCulture)
 		{
+			World = world;
 			CountryTag = tag;
-			if (tag == "MCA")
-			{
-				Console.WriteLine();
-			}
 			IsVic2Country = !world.ExistingCountries.Add(tag);
 			IsCultureNation = true;
 			if (!IsVic2Country)
@@ -222,6 +219,7 @@ namespace Eu4ToVic2
 				{
 					BasePartyModifier += nation.BasePartyModifier;
 				}
+
 				FinalisePoliticalParties(world, BasePartyModifier);
 
 
@@ -239,6 +237,21 @@ namespace Eu4ToVic2
 				//}).OrderByDescending(x => x.Count).Select(x => x.Name).First();
 
 			}
+		}
+
+		internal void FromProvinceEffect(Dictionary<string, float> oldEffects)
+		{
+
+			var effects = oldEffects.ToDictionary(e => e.Key, e => e.Value / NumProvinces);
+
+			CalcNationalValues(effects);
+			CalcTechSchool(effects);
+			
+			CalcUpperHouse(effects);
+			CalcLiteracy(effects);
+			CalcConsciousness(effects);
+			CalcMilitancy(effects);
+			
 		}
 
 		public string GetFormDecision(string template)
@@ -299,7 +312,7 @@ namespace Eu4ToVic2
 				var entry = new PdxSublist();
 				entry.AddValue("decision", "enact_female_suffrage");
 
-				data.AddSublist("1836.1.1", entry);
+				data.AddSublist(world.StartDate, entry);
 			}
 			return data;
 		}
@@ -453,9 +466,13 @@ namespace Eu4ToVic2
 
 		private void FinalisePoliticalParties(Vic2World vic2World, IdeologyModifier baseModifier)
 		{
+			if (Eu4Country?.CountryTag == "Z16")
+			{
+				Console.WriteLine("Me!");
+			}
 			foreach (var ideology in vic2World.IdeologyModifiers)
 			{
-				var polParty = new PoliticalParty(CountryTag + "_" + Enum.GetName(typeof(Ideology), ideology.Key), ideology.Key);
+				var polParty = new PoliticalParty(CountryTag + "_" + Enum.GetName(typeof(Ideology), ideology.Key), ideology.Key, vic2World);
 				var totalModifier = baseModifier + ideology.Value;
 				foreach (var pol in totalModifier.Policies)
 				{
@@ -574,7 +591,7 @@ namespace Eu4ToVic2
 			IterateCountryEffects(vic2World, Eu4Country, vic2World.CountryEffects, callback);
 
 		}
-		public static void IterateCountryEffects(Vic2World vic2World, Eu4Country country, PdxSublist effects, Action<Dictionary<string, float>> callback)
+		public static void IterateCountryEffects(Vic2World vic2World, Eu4CountryBase country, PdxSublist effects, Action<Dictionary<string, float>> callback)
 		{
 
 			if (effects.Sublists.ContainsKey("ideas"))
@@ -756,11 +773,11 @@ namespace Eu4ToVic2
 			},
 		};
 
-		public PoliticalParty(string name, Ideology ideology)
+		public PoliticalParty(string name, Ideology ideology, Vic2World world)
 		{
 			Name = name;
 			Ideology = ideology;
-			StartDate = new DateTime(1830, 1, 1);
+			StartDate = new DateTime(world.StartYear - 5, 1, 1);
 			EndDate = new DateTime(1940, 1, 1);
 		}
 

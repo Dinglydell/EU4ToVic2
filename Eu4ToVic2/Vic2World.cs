@@ -1,10 +1,13 @@
-﻿using PdxFile;
+﻿using Eu4Helper;
+using PdxFile;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.VisualBasic.FileIO;
 
 namespace Eu4ToVic2
 {
@@ -51,14 +54,34 @@ namespace Eu4ToVic2
 		public List<Vic2DiploRelation> Puppets { get; set; }
 
 		public Dictionary<string, string> VanillaLocalisation { get; set; }
-
-		public Vic2World(Eu4Save eu4Save)
+		public bool KeepStartDate { get; set; }
+		public string StartDate
 		{
+			get
+			{
+				return KeepStartDate ? Eu4Save.Date : "1836.1.1";
+			}
 
+		}
+		public int StartYear
+		{
+			get
+			{
+				return int.Parse(StartDate.Substring(0, StartDate.IndexOf('.')));
+			}
+		}
+
+		public Bitmap ProvinceMap { get; private set; }
+		public Dictionary<string, List<Point>> Vic2ProvPositions { get; private set; }
+
+		public Vic2World(Eu4Save eu4Save, bool keepStartDate)
+		{
+			KeepStartDate = keepStartDate;
 			Eu4Save = eu4Save;
 			ReligiousGroups = new Dictionary<string, Vic2ReligionGroup>();
 			V2Mapper = new Mapper(this);
 			ProvMapper = new ProvinceMapper("province_mappings.txt");
+			LoadProvinceMap();
 			LoadVanillaLocalisation();
 			LoadLocalisationHelper();
 			LoadEffects();
@@ -69,11 +92,83 @@ namespace Eu4ToVic2
 			LoadVicCulture();
 			LoadVicPopData();
 			LoadExistingCountries();
+
 			Console.WriteLine("Constructing Vic2 world...");
 			GenerateCountries();
 			GeneratePrimaryNations();
 			GenerateProvinces();
+			FindCultureCentres();
+			PostInitProvinces();
 			GenerateRelations();
+			
+
+			CreateModFiles();
+
+			Console.WriteLine("Done!");
+		}
+
+		private void PostInitProvinces()
+		{
+			Console.WriteLine("Running post-initialisation for provinces...");
+			foreach (var prov in Vic2Provinces)
+			{
+				prov.PostInitialise();
+			}
+		}
+
+		private void LoadProvinceMap()
+		{
+
+			var provMapFile = Path.Combine(VIC2_DIR, @"map\provinces.bmp");
+			ProvinceMap = new Bitmap(provMapFile);
+			var v2ProvColours = new Dictionary<int, string>();
+			var defFile = Path.Combine(VIC2_DIR, @"map\definition.csv");
+
+			using (TextFieldParser parser = new TextFieldParser(defFile))
+			{
+				parser.TextFieldType = FieldType.Delimited;
+				parser.SetDelimiters(";");
+				parser.ReadFields();
+				while (!parser.EndOfData)
+				{
+
+					//Process row
+					string[] fields = parser.ReadFields();
+					var col = Color.FromArgb(int.Parse(fields[1]), int.Parse(fields[2]), (int)float.Parse(fields[3]));
+					v2ProvColours[col.ToArgb()] = fields[0];
+				}
+			}
+			Console.WriteLine("Loading province map...");
+			Vic2ProvPositions = new Dictionary<string, List<Point>>();
+			var bmp = ProvinceMap;
+			for (int y = 0; y < bmp.Height; y++)
+			{
+				for (int x = 0; x < bmp.Width; x++)
+				{
+					var pxColour = bmp.GetPixel(x, y).ToArgb();
+					if (v2ProvColours.ContainsKey(pxColour))
+					{
+						var provID = v2ProvColours[pxColour];
+						if (!Vic2ProvPositions.ContainsKey(provID))
+						{
+							Vic2ProvPositions[provID] = new List<Point>();
+						}
+						Vic2ProvPositions[provID].Add(new Point(x, y));
+					}
+				}
+			}
+		}
+
+		private void FindCultureCentres()
+		{
+			foreach(var cul in CultureGroups)
+			{
+				cul.Value.FindCentre();
+			}
+		}
+
+		private void CreateModFiles()
+		{
 			Console.WriteLine("Generating mod...");
 			CreateModFolders();
 			CreateCountryFiles();
@@ -84,9 +179,67 @@ namespace Eu4ToVic2
 			CreateDiplomacyFiles();
 			CreateDecisionFiles();
 			CreateLocalisationFiles();
-			Console.WriteLine("Done!");
+			if (KeepStartDate)
+			{
+				FixTechnologies();
+				FixBookmarks();
+				CreateDefines();
+			}
 		}
 
+		private void FixBookmarks()
+		{
+			//var bookmarkData = PdxSublist.ReadFile(Path.Combine(VIC2_DIR, @"common\bookmarks.txt"));
+			
+
+			var fixedData = new PdxSublist();
+			var bookmarkData = new PdxSublist();
+			bookmarkData.AddValue("name", "GC_NAME");
+			bookmarkData.AddValue("desc", "GC_DESC");
+			bookmarkData.AddValue("date", StartDate);
+			bookmarkData.AddValue("cameraX", 2950.ToString());
+			bookmarkData.AddValue("cameraY", 1550.ToString());
+
+			fixedData.AddSublist("bookmark", bookmarkData);
+
+			using(var file = new StreamWriter(Path.Combine(OUTPUT, @"common\bookmarks.txt")))
+			{
+				fixedData.WriteToFile(file);
+			}
+		}
+
+		private void FixTechnologies()
+		{
+			// adjust the year for tech
+
+			Directory.CreateDirectory(Path.Combine(OUTPUT, "technologies"));
+			var techFiles = Directory.GetFiles(Path.Combine(VIC2_DIR, "technologies"));
+			foreach (var techFile in techFiles)
+			{
+				var data = PdxSublist.ReadFile(techFile);
+				data.ForEachSublist(sub =>
+				{
+					var year = (int)sub.Value.FloatValues["year"].Single() - 1836 + StartYear;
+					sub.Value.FloatValues["year"].Clear();
+					sub.Value.FloatValues["year"].Add(year);
+				});
+
+				using (var outFile = new StreamWriter(Path.Combine(OUTPUT, "technologies", Path.GetFileName(techFile))))
+				{
+					data.WriteToFile(outFile);
+				}
+			}
+		}
+
+		private void CreateDefines()
+		{
+			if (KeepStartDate)
+			{
+				var defines = File.ReadAllText(@"template\defines.lua").Replace("%START_DATE%", StartDate);
+
+				File.WriteAllText(Path.Combine(OUTPUT, @"common\defines.lua"), defines);
+			}
+		}
 
 		private void LoadVanillaLocalisation()
 		{
@@ -192,9 +345,15 @@ namespace Eu4ToVic2
 			Puppets = new List<Vic2DiploRelation>();
 			foreach (var eu4Relation in Eu4Save.Relations)
 			{
+
 				var v = new Vic2DiploRelation(eu4Relation, this);
+				if (v.First == null || v.Second == null)
+				{
+					continue;
+				}
 				if (v.Type == V2Relation.alliance)
 				{
+
 					Alliances.Add(v);
 				}
 				else if (v.Type == V2Relation.vassal)
@@ -417,6 +576,10 @@ namespace Eu4ToVic2
 
 		public string GenerateReligion(string religion)
 		{
+			if (religion == "noreligion")
+			{
+				return religion;
+			}
 			var group = Eu4Save.ReligiousGroups.FirstOrDefault(g => g.Value.Religions.Contains(Eu4Save.Religions[religion])).Value;
 			if (!ReligiousGroups.ContainsKey(group.Name))
 			{
@@ -436,7 +599,7 @@ namespace Eu4ToVic2
 			var group = Eu4Save.CultureGroups.FirstOrDefault(g => g.Value.Cultures.Contains(Eu4Save.Cultures[eu4Culture])).Value;
 			if (!CultureGroups.ContainsKey(group.Name))
 			{
-				CultureGroups[group.Name] = new Vic2CultureGroup(group);
+				CultureGroups[group.Name] = new Vic2CultureGroup(group, this);
 			}
 			Cultures[vic2Name] = CultureGroups[group.Name].AddCulture(eu4Culture, this, vic2Name, prefix, neoCulture);
 			return vic2Name;
@@ -550,10 +713,11 @@ namespace Eu4ToVic2
 		{
 			Console.WriteLine("Mapping provinces...");
 			Vic2Provinces = new List<Vic2Province>();
-			var provs = new Dictionary<int, List<Eu4Province>>();
-			ProvMapper.Mappings.Sublists["mappings"].Sublists.Every("link").ForEach((lnk) =>
+			var provs = new Dictionary<int, List<Eu4ProvinceBase>>();
+			var eu4Provinces = new HashSet<int>();
+			ProvMapper.Mappings.Sublists[Eu4Save.Version].Sublists.Every("link").ForEach((lnk) =>
 			{
-				var eu4Provs = new List<Eu4Province>();
+				var eu4Provs = new List<Eu4ProvinceBase>();
 				if (lnk.FloatValues.ContainsKey("eu4"))
 				{
 					lnk.FloatValues["eu4"].ForEach((eu4Prov) =>
@@ -563,7 +727,9 @@ namespace Eu4ToVic2
 						{
 							eu4Provs.Add(Eu4Save.Provinces[eu4]);
 						}
+						eu4Provinces.Add(eu4);
 					});
+
 				}
 				if (lnk.FloatValues.ContainsKey("v2"))
 				{
@@ -575,14 +741,28 @@ namespace Eu4ToVic2
 							provs[v2].AddRange(eu4Provs);
 						}
 						else {
-							provs[v2] = new List<Eu4Province>(eu4Provs);
+							provs[v2] = new List<Eu4ProvinceBase>(eu4Provs);
 						}
 
 					});
 				}
 			});
 
+			//check for missing eu4 provinces
+			var missing = false;
+			foreach (var prov in Eu4Save.Provinces)
+			{
+				if (!eu4Provinces.Contains(prov.Key))
+				{
+					Console.WriteLine($"MISSING PROVINCE: {prov.Key} ({prov.Value.Area.Name})");
+					missing = true;
+				}
 
+			}
+			if (missing)
+			{
+				throw new Exception("missing province!");
+			}
 
 			foreach (var prov in provs)
 			{
@@ -594,13 +774,20 @@ namespace Eu4ToVic2
 			}
 
 			Console.WriteLine($"Mapped {Vic2Provinces.Count} provinces.");
+
+			
 		}
 		public int GetBestVic2ProvinceMatch(int eu4ProvID)
 		{
-			return (int)ProvMapper.Mappings.Sublists["mappings"].Sublists.Every("link").First(s =>
+			var p = (ProvMapper.Mappings.Sublists[Eu4Save.Version].Sublists.Every("link").FirstOrDefault(s =>
 			{
 				return s.FloatValues.ContainsKey("eu4") ? s.FloatValues["eu4"].Any(prov => prov == eu4ProvID) : false;
-			}).FloatValues["v2"].First();
+			}));
+			if (p == null)
+			{
+				return 0;
+			}
+			return (int)(p.FloatValues["v2"].First());
 		}
 
 		private PdxSublist FindProvinceFile(int key)
@@ -619,7 +806,7 @@ namespace Eu4ToVic2
 			return null;
 		}
 
-		public Vic2Country GetCountry(Eu4Country eu4Country)
+		public Vic2Country GetCountry(Eu4CountryBase eu4Country)
 		{
 			if (eu4Country == null)
 			{
@@ -714,9 +901,9 @@ namespace Eu4ToVic2
 
 					foreach (var policy in Policies.policyTypes)
 					{
-						if (parties.Sublists[name].KeyValuePairs.ContainsKey(policy.Name))
+						if (parties.Sublists[name].FloatValues.ContainsKey(policy.Name))
 						{
-							party.AddModifier(policy, float.Parse(parties.Sublists[name].KeyValuePairs[policy.Name]));
+							party.AddModifier(policy, parties.Sublists[name].FloatValues[policy.Name].Sum());
 						}
 					}
 					IdeologyModifiers.Add(ideology, party);
@@ -738,8 +925,16 @@ namespace Eu4ToVic2
 			Vic2Countries = new List<Vic2Country>();
 			foreach (var eu4Country in Eu4Save.Countries.Values)
 			{
-				var v2Country = new Vic2Country(this, eu4Country);
-				Vic2Countries.Add(v2Country);
+				//if more than 2 instutions missing, skip
+				if (eu4Country.Institutions.Count(i => !i.Value) < 3)
+				{
+					var v2Country = new Vic2Country(this, eu4Country);
+					Vic2Countries.Add(v2Country);
+				}
+				else
+				{
+					Console.WriteLine($"{eu4Country.CountryTag} has not embraced enough institutions and so will not exist in Vic2.");
+				}
 			}
 
 			Console.WriteLine($"Created {Vic2Countries.Count} Vic2 countries...");
@@ -801,6 +996,10 @@ namespace Eu4ToVic2
 		public static IdeologyModifier operator +(IdeologyModifier a, IdeologyModifier b)
 		{
 			var newMod = new IdeologyModifier();
+			foreach (var pol in Eu4ToVic2.Policies.policyTypes)
+			{
+				newMod.AddModifier(pol, 0);
+			}
 			foreach (var pol in a.Policies)
 			{
 				newMod.AddModifier(pol.Key, pol.Value);
